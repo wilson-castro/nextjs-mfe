@@ -1,0 +1,15 @@
+packages:
+  - 'apps/*'
+
+allowBuilds:
+  '@module-federation/nextjs-mf': true
+
+onlyBuiltDependencies:
+  - '@module-federation/nextjs-mf'
+  - '@module-federation/enhanced'
+  - '@swc/core'
+  - 'webpack'
+
+overrides:
+  enhanced-resolve: '5.17.1'
+  webpack: '5.90.3'
