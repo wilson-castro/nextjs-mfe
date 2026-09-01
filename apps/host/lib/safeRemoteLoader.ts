@@ -1,30 +1,31 @@
 import http from 'node:http';
 import type { ServerPayload } from 'remote/ServerCard';
+import type { UserSession } from './session';
 
-/**
- * Fetches remote SSR payload directly over HTTP with strict timeout and no-cache headers.
- * Bypasses Node.js module caching pitfalls when remotes go offline and come back online.
- *
- * @param apiUrl - URL to the remote server data endpoint
- * @param timeoutMs - Maximum milliseconds to wait (default 800ms)
- */
 export function fetchRemoteServerData(
   apiUrl: string = 'http://localhost:3001/api/server-data',
-  timeoutMs: number = 800
+  timeoutMs: number = 800,
+  session?: UserSession
 ): Promise<ServerPayload | null> {
   return new Promise((resolve) => {
     try {
       const parsedUrl = new URL(apiUrl);
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache',
+        Accept: 'application/json',
+      };
+
+      if (session) {
+        headers['x-user-session'] = JSON.stringify(session);
+      }
+
       const req = http.get(
         {
           hostname: parsedUrl.hostname,
           port: parsedUrl.port || 80,
           path: parsedUrl.pathname + parsedUrl.search,
           timeout: timeoutMs,
-          headers: {
-            'Cache-Control': 'no-cache',
-            Accept: 'application/json',
-          },
+          headers,
         },
         (res) => {
           if (res.statusCode !== 200) {

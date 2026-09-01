@@ -407,3 +407,32 @@ pnpm verify:ssr
 2. **Paridade Rigorosa de Tags DOM**: Evite diferenças de tags entre o componente renderizado e seu respectivo fallback para impedir erros de hidratação no React 18/19.
 3. **Pages Router para Module Federation com SSR**: O Pages Router permanece como a base mais sólida e estável para arquiteturas de Micro-Frontends federadas com Next.js.
 4. **Isolamento via Error Boundaries**: Todo componente federado deve ser protegido por um Error Boundary para garantir que falhas no runtime do cliente não derrubem a aplicação Host.
+
+---
+
+## 8. Prova de Conceito Completa (PoC) — Requisitos e Viabilidade
+
+A viabilidade técnica de todos os 7 requisitos solicitados no `POC.md` foi validada e implementada com sucesso:
+
+| Requisito | Solução Técnica Implementada | Validação |
+|---|---|---|
+| **1. Sessão no Host e Herança pelo Remote** | Host gerencia `UserSession` (perfis Admin, Operator, Viewer) e propaga via SSR headers (`x-user-session`), SSR props e sincronização de eventos no cliente. | `verify:poc` confirma renderização da sessão herdada no HTML do Remote. |
+| **2. Layout Host (Header + SideNav)** | Layout `HostLayout` com topo unificado (seletor de sessão, status MFE, botão de toast) e barra lateral `SideNavigation` com links de navegação. | Componentes estruturados e responsivos com slots para o MFE remoto. |
+| **3. Conexões SSE (Server-Sent Events)** | Endpoint `/api/sse-events` na Remote (porta 3001) com stream contínuo de telemetria; hook `RemoteTelemetry` gerencia conexão, reconexão, pausa e descarte limpo no unmount (`EventSource.close()`). | Stream consumido em tempo real e validado no teste automatizado. |
+| **4. Server-Side Rendering do Next.js** | Module Federation v8 integrado no ciclo `getServerSideProps` do Host com `safeRemoteLoader` resiliente (timeout de 800ms) sem risco de cascading failure. | SSR verificado no HTML bruto sem waterfall no cliente. |
+| **5. Estados Globais & Cache (Servidor/Cliente)** | Sistema de Toast global via Event Bus desacoplado (`mfe:toast` CustomEvents); cache de servidor com cabeçalhos `s-maxage` e store em memória com TTL. | Notificações disparadas do Remote aparecem no portal do Host; cache de servidor testado. |
+| **6. Query Params e Path Routes** | SideNavigation e sub-abas sincronizam com `router.push(..., shallow: true)` e parâmetros de URL (`?tab=overview`, `?tab=telemetry`, `?tab=map`, `?tab=metrics`, `?city=sao-paulo`). | Remote lê query params e reage dinamicamente sem full page reload. |
+| **7. Remote MFE com MapLibre GL** | Componente federado `RemoteMap` com `maplibre-gl`, renderizando mapa vetorial/raster interativo, marcadores de infraestrutura, popups e disparando eventos globais ao clicar. | Inicialização cliente protegida contra SSR window issues e estilos integrados. |
+
+### Execução da Suíte de Testes da PoC
+
+```bash
+# 1. Compilar as duas aplicações
+pnpm build
+
+# 2. Iniciar os servidores
+pnpm start
+
+# 3. Executar validação automatizada de todos os 7 requisitos
+pnpm verify:poc
+```

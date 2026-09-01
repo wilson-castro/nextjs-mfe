@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@module-federation/nextjs-mf": "^8.8.74",
+    "maplibre-gl": "^6.6.0",
     "next": "^15.1.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",

@@ -14,6 +14,7 @@
     "start": "concurrently -k -p \"[{name}]\" -n \"REMOTE,HOST\" -c \"cyan,magenta\" \"pnpm start:remote\" \"pnpm start:host\"",
     "typecheck": "pnpm --filter @mfe/remote typecheck && pnpm --filter @mfe/host typecheck",
     "verify:ssr": "node scripts/verify-ssr.mjs",
+    "verify:poc": "node scripts/verify-poc.mjs",
     "verify:resilience": "node scripts/verify-resilience.mjs"
   },
   "devDependencies": {

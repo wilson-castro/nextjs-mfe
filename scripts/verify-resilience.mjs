@@ -27,9 +27,7 @@ async function verifyResilience() {
       process.exit(1);
     }
 
-    console.log('  ✅ Host responded with HTTP 200 OK');
-
-    const hasHostHeader = /Host Application/.test(body);
+    const hasHostHeader = /Enterprise MFE Host|Host Application/.test(body);
     const hasFallbackCard = /Remote Service Unavailable|Fallback Mode/.test(body);
     const hasOnlineCard = /Remote Component Loaded via SSR in Host/.test(body);
 

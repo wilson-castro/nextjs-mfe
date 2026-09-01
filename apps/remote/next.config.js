@@ -10,7 +10,11 @@ const nextConfig = {
         filename: 'static/chunks/remoteEntry.js',
         exposes: {
           './ServerCard': './components/ServerCard.tsx',
+          './RemoteMap': './components/RemoteMap.tsx',
+          './RemoteTelemetry': './components/RemoteTelemetry.tsx',
+          './RemoteDashboard': './components/RemoteDashboard.tsx',
           './getServerData': './lib/getServerData.ts',
+          './events': './lib/events.ts',
         },
         shared: {},
       })

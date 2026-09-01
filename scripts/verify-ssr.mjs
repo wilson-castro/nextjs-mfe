@@ -33,11 +33,11 @@ async function verifySsr() {
     }
 
     const assertions = [
-      { name: 'Host Title / Container', pattern: /Host Application/ },
+      { name: 'Host Title / Container', pattern: /Enterprise MFE Host/ },
       { name: 'Remote Federated Badge', pattern: /Federated Remote Component/ },
-      { name: 'Remote Component Title', pattern: /Remote Component Loaded via SSR in Host/ },
       { name: 'Remote SSR Origin Text', pattern: /Remote Application \(Port 3001\)/ },
       { name: 'SSR Request ID Label', pattern: /SSR Request ID:/ },
+      { name: 'Session Inheritance', pattern: /Inherited Host Session|Ana Souza/ },
     ];
 
     let allPassed = true;

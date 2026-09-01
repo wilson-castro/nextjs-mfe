@@ -2,24 +2,24 @@
 
 import React, { useState } from 'react';
 import type { ServerCardProps } from '../types';
+import { emitToast } from '../lib/events';
 
-/**
- * Server-Rendered Federated Component.
- * Receives initial server payload during SSR and hydrates with client interactivity.
- *
- * @example
- * ```tsx
- * <ServerCard initialData={data} title="SSR Remote Card" />
- * ```
- */
 export const ServerCard: React.FC<ServerCardProps> = ({
   initialData,
   title = 'Remote SSR Federated Card',
+  session,
 }) => {
   const [clickCount, setClickCount] = useState<number>(0);
+  const activeSession = session || initialData?.session;
 
   const handleIncrement = (): void => {
-    setClickCount((prev) => prev + 1);
+    const nextCount = clickCount + 1;
+    setClickCount(nextCount);
+    emitToast(
+      'Remote Action Executed',
+      `Counter incremented to ${nextCount} by ${activeSession?.userName || 'Anonymous User'}`,
+      'success'
+    );
   };
 
   return (
@@ -30,6 +30,16 @@ export const ServerCard: React.FC<ServerCardProps> = ({
       </header>
 
       <div className="card-body">
+        {activeSession && (
+          <div className="session-banner">
+            <span className="session-badge">Inherited Host Session</span>
+            <p>
+              User: <strong>{activeSession.userName}</strong> ({activeSession.email}) | Role:{' '}
+              <span className={`role-tag role-${activeSession.role}`}>{activeSession.role}</span>
+            </p>
+          </div>
+        )}
+
         {initialData ? (
           <dl className="data-grid">
             <div className="data-row">
@@ -39,6 +49,12 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             <div className="data-row">
               <dt>Server Timestamp:</dt>
               <dd className="data-value">{initialData.timestamp}</dd>
+            </div>
+            <div className="data-row">
+              <dt>Server Cache Status:</dt>
+              <dd className="data-value highlight">
+                {initialData.cached ? '⚡ Hit (Server Memory Cache)' : '🔄 Miss (Fresh Calculation)'}
+              </dd>
             </div>
             <div className="data-row">
               <dt>Node.js Runtime:</dt>
@@ -69,7 +85,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             onClick={handleIncrement}
             data-testid="remote-increment-button"
           >
-            Increment Counter (+1)
+            Increment Counter (+1) & Dispatch Toast
           </button>
         </div>
       </div>
