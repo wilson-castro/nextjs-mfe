@@ -14,7 +14,7 @@ declare module 'remote/ServerCard' {
     readonly timestamp: string;
     readonly serverNodeVersion: string;
     readonly requestId: string;
-    readonly session?: UserSession;
+    readonly session?: UserSession | null;
     readonly cached?: boolean;
     readonly metrics: {
       readonly cpuArch: string;

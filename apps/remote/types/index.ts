@@ -17,7 +17,7 @@ export interface ServerPayload {
   readonly timestamp: string;
   readonly serverNodeVersion: string;
   readonly requestId: string;
-  readonly session?: UserSession;
+  readonly session?: UserSession | null;
   readonly metrics: ServerMetrics;
   readonly cached?: boolean;
 }

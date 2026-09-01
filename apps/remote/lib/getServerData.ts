@@ -14,7 +14,7 @@ async function computeDiagnostics(session?: UserSession): Promise<ServerPayload>
     timestamp: new Date().toISOString(),
     serverNodeVersion: isServer && typeof process !== 'undefined' ? process.version : 'browser-client',
     requestId,
-    session,
+    session: session || null,
     metrics: {
       cpuArch: isServer && typeof process !== 'undefined' ? process.arch : 'unknown',
       platform: isServer && typeof process !== 'undefined' ? process.platform : 'browser',
