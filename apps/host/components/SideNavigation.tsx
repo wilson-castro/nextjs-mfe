@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { hostLog } from '../lib/logger';
 
 export interface SideNavigationProps {
   readonly currentTab: string;
@@ -28,6 +29,10 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({ currentTab, onTa
                 className={`nav-link ${isActive ? 'nav-link-active' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
+                  hostLog.client('NAVIGATE_TAB_CLICK', {
+                    tabId: item.id,
+                    label: item.label,
+                  });
                   onTabSelect?.(item.id);
                 }}
               >

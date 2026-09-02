@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MFE_EVENTS, type ToastPayload } from '../lib/events';
+import { hostLog } from '../lib/logger';
 
 const AUTO_DISMISS_MS = 4500;
 
@@ -14,6 +15,12 @@ export const ToastContainer: React.FC = () => {
       if (!customEvent.detail) return;
 
       const toast = customEvent.detail;
+      hostLog.client('RECEIVE_MFE_TOAST', {
+        id: toast.id,
+        title: toast.title,
+        type: toast.type,
+      });
+
       setToasts((prev) => [...prev, toast]);
 
       setTimeout(() => {

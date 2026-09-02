@@ -1,4 +1,5 @@
 import type { ToastPayload, UserSession, MapMarker } from '../types';
+import { remoteLog } from './logger';
 
 export const MFE_EVENTS = {
   TOAST: 'mfe:toast',
@@ -24,6 +25,12 @@ export function emitToast(
     timestamp: Date.now(),
   };
 
+  remoteLog.client('DISPATCH_MFE_TOAST', {
+    id: payload.id,
+    title: payload.title,
+    type: payload.type,
+  });
+
   window.dispatchEvent(new CustomEvent(MFE_EVENTS.TOAST, { detail: payload }));
 }
 
@@ -32,6 +39,13 @@ export function emitToast(
  */
 export function emitSessionChange(session: UserSession): void {
   if (typeof window === 'undefined') return;
+
+  remoteLog.client('DISPATCH_SESSION_CHANGE', {
+    userId: session.userId,
+    userName: session.userName,
+    role: session.role,
+  });
+
   window.dispatchEvent(new CustomEvent(MFE_EVENTS.SESSION_CHANGE, { detail: session }));
 }
 
@@ -40,5 +54,12 @@ export function emitSessionChange(session: UserSession): void {
  */
 export function emitMapSelect(marker: MapMarker): void {
   if (typeof window === 'undefined') return;
+
+  remoteLog.client('DISPATCH_MAP_SELECT', {
+    markerId: marker.id,
+    name: marker.name,
+    status: marker.status,
+  });
+
   window.dispatchEvent(new CustomEvent(MFE_EVENTS.MAP_SELECT, { detail: marker }));
 }

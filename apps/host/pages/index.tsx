@@ -7,18 +7,24 @@ import RemoteFallbackCard from '../components/RemoteFallbackCard';
 import HostLayout from '../components/HostLayout';
 import { fetchRemoteServerData } from '../lib/safeRemoteLoader';
 import { DEFAULT_SESSION, getSessionFromStorage, saveSessionToStorage, type UserSession } from '../lib/session';
+import { hostLog } from '../lib/logger';
 
 const RemoteDashboard = lazy(() =>
-  import('remote/RemoteDashboard').catch((err: Error) => {
-    console.warn('Failed to resolve remote/RemoteDashboard:', err.message);
-    return {
-      default: () => (
-        <RemoteFallbackCard
-          reason={`Module load error: ${err.message || 'Remote bundle unavailable'}`}
-        />
-      ),
-    };
-  })
+  import('remote/RemoteDashboard')
+    .then((mod) => {
+      hostLog.client('FEDERATION_LOAD_REMOTE_SUCCESS', { module: 'remote/RemoteDashboard' });
+      return mod;
+    })
+    .catch((err: Error) => {
+      hostLog.error('FEDERATION_LOAD_REMOTE_ERROR', err);
+      return {
+        default: () => (
+          <RemoteFallbackCard
+            reason={`Module load error: ${err.message || 'Remote bundle unavailable'}`}
+          />
+        ),
+      };
+    })
 );
 
 interface HostHomePageProps {
@@ -59,12 +65,17 @@ const HostHomePage: NextPage<HostHomePageProps> = ({
     setActiveTab(tabId);
     const nextRoute = `/?tab=${tabId}`;
     setCurrentRoute(nextRoute);
+    hostLog.client('TAB_ROUTE_CHANGED', { tabId, nextRoute });
     if (typeof window !== 'undefined') {
       window.history.pushState(null, '', nextRoute);
     }
   };
 
   const handleSessionChange = (nextSession: UserSession) => {
+    hostLog.client('HOST_SESSION_UPDATED', {
+      user: nextSession.userName,
+      role: nextSession.role,
+    });
     setCurrentSession(nextSession);
     saveSessionToStorage(nextSession);
   };
@@ -145,6 +156,12 @@ export const getServerSideProps: GetServerSideProps<HostHomePageProps> = async (
   const initialCity = typeof context.query.city === 'string' ? context.query.city : null;
   const initialRoute = context.resolvedUrl || '/';
 
+  hostLog.server('SSR_PAGE_RENDER_START', {
+    route: initialRoute,
+    tab: initialTab,
+    user: session.userName,
+  });
+
   // 1. Fetch remote server data with 800ms upper-bound timeout and session headers
   const serverData = await fetchRemoteServerData('http://localhost:3001/api/server-data', 800, session);
 
@@ -158,6 +175,11 @@ export const getServerSideProps: GetServerSideProps<HostHomePageProps> = async (
   };
 
   if (serverData) {
+    hostLog.server('SSR_PAGE_RENDER_SUCCESS', {
+      route: initialRoute,
+      remoteAvailable: true,
+      requestId: serverData.requestId,
+    });
     return {
       props: {
         ...baseProps,
@@ -167,6 +189,12 @@ export const getServerSideProps: GetServerSideProps<HostHomePageProps> = async (
       },
     };
   }
+
+  hostLog.server('SSR_PAGE_RENDER_FALLBACK', {
+    route: initialRoute,
+    remoteAvailable: false,
+    reason: 'Remote MFE (Port 3001) is offline or unreachable during SSR',
+  });
 
   return {
     props: {

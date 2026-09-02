@@ -1,3 +1,5 @@
+import { hostLog } from './logger';
+
 export interface ToastPayload {
   readonly id: string;
   readonly title: string;
@@ -26,6 +28,12 @@ export function emitToast(
     type,
     timestamp: Date.now(),
   };
+
+  hostLog.client('DISPATCH_MFE_TOAST', {
+    id: payload.id,
+    title: payload.title,
+    type: payload.type,
+  });
 
   window.dispatchEvent(new CustomEvent(MFE_EVENTS.TOAST, { detail: payload }));
 }

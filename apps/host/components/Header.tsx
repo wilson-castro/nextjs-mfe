@@ -3,6 +3,7 @@
 import React from 'react';
 import { PRESET_USERS, type UserSession } from '../lib/session';
 import { emitToast } from '../lib/events';
+import { hostLog } from '../lib/logger';
 
 interface HeaderProps {
   readonly currentSession: UserSession;
@@ -19,6 +20,11 @@ export const Header: React.FC<HeaderProps> = ({
     const selected = PRESET_USERS.find((u) => u.userId === e.target.value);
     if (!selected) return;
 
+    hostLog.client('SESSION_SWITCHED', {
+      userId: selected.userId,
+      user: selected.userName,
+      role: selected.role,
+    });
     onSessionChange(selected);
     emitToast(
       'Session Switched in Host',

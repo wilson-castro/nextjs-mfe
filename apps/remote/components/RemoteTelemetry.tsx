@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { RemoteTelemetryProps, TelemetryEvent } from '../types';
 import { emitToast } from '../lib/events';
+import { remoteLog } from '../lib/logger';
 
 const MAX_BUFFER_SIZE = 8;
 
@@ -20,6 +21,7 @@ export const RemoteTelemetry: React.FC<RemoteTelemetryProps> = ({
     if (isPaused) {
       eventSourceRef.current?.close();
       setStatus('paused');
+      remoteLog.client('SSE_STREAM_PAUSED', { isPaused: true });
       return;
     }
 
@@ -27,16 +29,31 @@ export const RemoteTelemetry: React.FC<RemoteTelemetryProps> = ({
       ? '/api/sse-events'
       : 'http://localhost:3001/api/sse-events';
 
+    remoteLog.client('SSE_STREAM_CONNECTING', { sseUrl });
     const es = new EventSource(sseUrl);
     eventSourceRef.current = es;
 
-    es.onopen = () => setStatus('connected');
-    es.onerror = () => setStatus('error');
+    es.onopen = () => {
+      setStatus('connected');
+      remoteLog.client('SSE_STREAM_CONNECTED', { sseUrl });
+    };
+
+    es.onerror = () => {
+      setStatus('error');
+      remoteLog.client('SSE_STREAM_ERROR', { sseUrl });
+    };
 
     es.onmessage = (event: MessageEvent) => {
       try {
         const payload: TelemetryEvent = JSON.parse(event.data);
         if (!payload.id) return;
+
+        remoteLog.client('SSE_EVENT_RECEIVED', {
+          id: payload.id,
+          level: payload.level,
+          source: payload.source,
+          value: payload.value,
+        });
 
         setEvents((prev) => [payload, ...prev.slice(0, maxEvents - 1)]);
 
@@ -44,11 +61,12 @@ export const RemoteTelemetry: React.FC<RemoteTelemetryProps> = ({
           emitToast('Critical SSE Alert', `${payload.source}: ${payload.message}`, 'error');
         }
       } catch (err) {
-        console.warn('Failed to parse SSE payload', err);
+        remoteLog.error('SSE_PARSE_ERROR', err);
       }
     };
 
     return () => {
+      remoteLog.client('SSE_STREAM_CLOSED', { sseUrl });
       es.close();
     };
   }, [isPaused, maxEvents]);

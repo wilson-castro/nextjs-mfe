@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import type { ServerCardProps } from '../types';
 import { emitToast } from '../lib/events';
+import { remoteLog } from '../lib/logger';
 
 export const ServerCard: React.FC<ServerCardProps> = ({
   initialData,
@@ -15,6 +16,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({
   const handleIncrement = (): void => {
     const nextCount = clickCount + 1;
     setClickCount(nextCount);
+    remoteLog.client('ACTION_INCREMENT_COUNTER', {
+      nextCount,
+      user: activeSession?.userName || 'Anonymous',
+    });
     emitToast(
       'Remote Action Executed',
       `Counter incremented to ${nextCount} by ${activeSession?.userName || 'Anonymous User'}`,

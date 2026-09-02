@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { RemoteMapProps, MapMarker } from '../types';
 import { emitToast, emitMapSelect } from '../lib/events';
+import { remoteLog } from '../lib/logger';
 
 const SAMPLE_MARKERS: readonly MapMarker[] = [
   {
@@ -92,6 +93,7 @@ export const RemoteMap: React.FC<RemoteMapProps> = ({
       map.on('load', () => {
         if (isCancelled) return;
         setIsMapLoaded(true);
+        remoteLog.client('MAPLIBRE_ENGINE_LOADED', { markersCount: SAMPLE_MARKERS.length });
 
         SAMPLE_MARKERS.forEach((marker) => {
           const el = document.createElement('div');
@@ -113,6 +115,11 @@ export const RemoteMap: React.FC<RemoteMapProps> = ({
           el.addEventListener('click', () => {
             setSelectedMarker(marker);
             onMarkerClick?.(marker);
+            remoteLog.client('MAP_MARKER_CLICKED', {
+              id: marker.id,
+              name: marker.name,
+              coordinates: [marker.lat, marker.lng],
+            });
             emitMapSelect(marker);
             emitToast(
               'Map Location Selected',
@@ -136,6 +143,7 @@ export const RemoteMap: React.FC<RemoteMapProps> = ({
 
   const handleFlyTo = (marker: MapMarker) => {
     setSelectedMarker(marker);
+    remoteLog.client('MAP_FLY_TO', { id: marker.id, name: marker.name });
     mapInstanceRef.current?.flyTo({ center: [marker.lng, marker.lat], zoom: 8, speed: 1.5 });
     onMarkerClick?.(marker);
     emitMapSelect(marker);
