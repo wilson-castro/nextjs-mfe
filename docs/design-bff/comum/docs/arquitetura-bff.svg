@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 775" width="780" height="775" role="img" aria-labelledby="titulo descricao">
+<title id="titulo">Arquitetura do front-end com BFF: responsabilidades e serviços internos</title>
+<desc id="descricao">Agentes externos no topo: dois navegadores e CDN. No centro, o front-end Next.js contém o Site SPA que executa no navegador e o BFF que executa no servidor. O BFF agrupa autenticação, cache, composição de dados e tempo real, atravessado horizontalmente por duas faixas transversais: autorização e isolamento de servidor. Uma faixa vertical de observabilidade percorre Site e BFF. Na base, serviços externos: provedor SSO, Redis, API Spring Boot e coletor OTel.</desc>
+<style>
+svg{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+:root{
+--gf:#F1EFE8;--gs:#5F5E5A;--gt:#2C2C2A;--gm:#5F5E5A;
+--pf:#EEEDFE;--ps:#534AB7;--pt:#26215C;--pm:#534AB7;
+--tf:#E1F5EE;--ts:#0F6E56;--tt:#04342C;--tm:#0F6E56;
+--cf:#FAECE7;--cs:#993C1D;--ct:#4A1B0C;--cm:#993C1D;
+--arr:#888780;--arrt:#5F5E5A;
+}
+@media (prefers-color-scheme:dark){:root{
+--gf:#444441;--gs:#B4B2A9;--gt:#D3D1C7;--gm:#B4B2A9;
+--pf:#3C3489;--ps:#AFA9EC;--pt:#CECBF6;--pm:#AFA9EC;
+--tf:#085041;--ts:#5DCAA5;--tt:#9FE1CB;--tm:#5DCAA5;
+--cf:#712B13;--cs:#F0997B;--ct:#F5C4B3;--cm:#F0997B;
+--arr:#888780;--arrt:#B4B2A9;
+}}
+.gray rect{fill:var(--gf);stroke:var(--gs);stroke-width:.5}
+.gray .th{fill:var(--gt)}.gray .ts{fill:var(--gm)}
+.purple rect{fill:var(--pf);stroke:var(--ps);stroke-width:.5}
+.purple .th{fill:var(--pt)}.purple .ts{fill:var(--pm)}
+.teal rect{fill:var(--tf);stroke:var(--ts);stroke-width:.5}
+.teal .th{fill:var(--tt)}.teal .ts{fill:var(--tm)}
+.coral rect{fill:var(--cf);stroke:var(--cs);stroke-width:.5}
+.coral .th{fill:var(--ct)}.coral .ts{fill:var(--cm)}
+rect.hollow{fill:none}
+.th{font-size:14px;font-weight:500}
+.ts{font-size:12px;font-weight:400}
+.arr{stroke:var(--arr);stroke-width:1.4;fill:none}
+.lbl{font-size:12px;fill:var(--arrt)}
+#seta path{stroke:var(--arr);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<defs><marker id="seta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9"/></marker></defs>
+
+<g class="gray">
+<rect class="hollow" x="20" y="10" width="740" height="88" rx="10"/>
+<text class="ts" x="32" y="26" dominant-baseline="central">agentes externos</text>
+<rect x="36" y="38" width="216" height="44" rx="6"/>
+<text class="th" x="144" y="54" text-anchor="middle" dominant-baseline="central">Usuário A</text>
+<text class="ts" x="144" y="70" text-anchor="middle" dominant-baseline="central">navegador</text>
+<rect x="282" y="38" width="216" height="44" rx="6"/>
+<text class="th" x="390" y="54" text-anchor="middle" dominant-baseline="central">Usuário B</text>
+<text class="ts" x="390" y="70" text-anchor="middle" dominant-baseline="central">navegador</text>
+<rect x="528" y="38" width="216" height="44" rx="6"/>
+<text class="th" x="636" y="54" text-anchor="middle" dominant-baseline="central">CDN</text>
+<text class="ts" x="636" y="70" text-anchor="middle" dominant-baseline="central">conteúdo estático</text>
+</g>
+
+<g class="gray">
+<rect class="hollow" x="20" y="115" width="740" height="545" rx="10"/>
+<text class="ts" x="32" y="131" dominant-baseline="central">Front-end — aplicação Next.js</text>
+</g>
+
+<g class="teal">
+<rect class="hollow" x="36" y="145" width="524" height="118" rx="8"/>
+<text class="th" x="48" y="163" dominant-baseline="central">Site — SPA no navegador</text>
+<rect x="48" y="176" width="158" height="34" rx="4"/>
+<text class="ts" x="127" y="193" text-anchor="middle" dominant-baseline="central">roteamento e render</text>
+<rect x="219" y="176" width="158" height="34" rx="4"/>
+<text class="ts" x="298" y="193" text-anchor="middle" dominant-baseline="central">estado de interface</text>
+<rect x="390" y="176" width="158" height="34" rx="4"/>
+<text class="ts" x="469" y="193" text-anchor="middle" dominant-baseline="central">cache de consulta</text>
+<rect x="48" y="216" width="158" height="34" rx="4"/>
+<text class="ts" x="127" y="233" text-anchor="middle" dominant-baseline="central">assinatura de eventos</text>
+<rect x="219" y="216" width="158" height="34" rx="4"/>
+<text class="ts" x="298" y="233" text-anchor="middle" dominant-baseline="central">atualização otimista</text>
+<rect x="390" y="216" width="158" height="34" rx="4"/>
+<text class="ts" x="469" y="233" text-anchor="middle" dominant-baseline="central">telemetria de uso</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="36" y="300" width="524" height="340" rx="8"/>
+<text class="th" x="48" y="318" dominant-baseline="central">BFF — camada de servidor</text>
+</g>
+
+<g class="coral">
+<rect x="48" y="328" width="500" height="30" rx="4"/>
+<text class="ts" x="298" y="343" text-anchor="middle" dominant-baseline="central">autorização — revalidada a cada requisição e a cada emissão</text>
+<rect x="48" y="600" width="500" height="30" rx="4"/>
+<text class="ts" x="298" y="615" text-anchor="middle" dominant-baseline="central">isolamento de servidor — nada deste bloco alcança o navegador</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="48" y="368" width="244" height="106" rx="6"/>
+<text class="th" x="58" y="384" dominant-baseline="central">Autenticação</text>
+<rect x="58" y="396" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="406" text-anchor="middle" dominant-baseline="central">fluxo OIDC com PKCE</text>
+<rect x="58" y="421" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="431" text-anchor="middle" dominant-baseline="central">sessão e cookie opaco</text>
+<rect x="58" y="446" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="456" text-anchor="middle" dominant-baseline="central">renovação de token</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="304" y="368" width="244" height="106" rx="6"/>
+<text class="th" x="314" y="384" dominant-baseline="central">Cache</text>
+<rect x="314" y="396" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="406" text-anchor="middle" dominant-baseline="central">chave com escopo</text>
+<rect x="314" y="421" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="431" text-anchor="middle" dominant-baseline="central">revalidação condicional</text>
+<rect x="314" y="446" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="456" text-anchor="middle" dominant-baseline="central">invalidação por evento</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="48" y="484" width="244" height="106" rx="6"/>
+<text class="th" x="58" y="500" dominant-baseline="central">Composição de dados</text>
+<rect x="58" y="512" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="522" text-anchor="middle" dominant-baseline="central">cliente HTTP único</text>
+<rect x="58" y="537" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="547" text-anchor="middle" dominant-baseline="central">agregação de blocos</text>
+<rect x="58" y="562" width="224" height="20" rx="3"/>
+<text class="ts" x="170" y="572" text-anchor="middle" dominant-baseline="central">concorrência otimista</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="304" y="484" width="244" height="106" rx="6"/>
+<text class="th" x="314" y="500" dominant-baseline="central">Tempo real</text>
+<rect x="314" y="512" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="522" text-anchor="middle" dominant-baseline="central">conexão upstream</text>
+<rect x="314" y="537" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="547" text-anchor="middle" dominant-baseline="central">multiplexação por aba</text>
+<rect x="314" y="562" width="224" height="20" rx="3"/>
+<text class="ts" x="426" y="572" text-anchor="middle" dominant-baseline="central">reconexão e retomada</text>
+</g>
+
+<g class="coral">
+<rect class="hollow" x="572" y="145" width="172" height="495" rx="8"/>
+<text class="th" x="584" y="163" dominant-baseline="central">Observabilidade</text>
+<text class="ts" x="584" y="190" dominant-baseline="central">no navegador</text>
+<rect x="584" y="202" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="215" text-anchor="middle" dominant-baseline="central">span de ação</text>
+<rect x="584" y="234" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="247" text-anchor="middle" dominant-baseline="central">web vitals</text>
+<text class="ts" x="584" y="318" dominant-baseline="central">no servidor</text>
+<rect x="584" y="330" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="343" text-anchor="middle" dominant-baseline="central">span de rota</text>
+<rect x="584" y="370" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="383" text-anchor="middle" dominant-baseline="central">span de render</text>
+<rect x="584" y="410" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="423" text-anchor="middle" dominant-baseline="central">propagação de trace</text>
+<rect x="584" y="450" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="463" text-anchor="middle" dominant-baseline="central">erro identificado</text>
+<rect x="584" y="490" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="503" text-anchor="middle" dominant-baseline="central">sem dado pessoal</text>
+<rect x="584" y="530" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="543" text-anchor="middle" dominant-baseline="central">amostragem</text>
+<rect x="584" y="570" width="148" height="26" rx="3"/>
+<text class="ts" x="658" y="583" text-anchor="middle" dominant-baseline="central">log correlacionado</text>
+</g>
+
+<g class="gray">
+<rect class="hollow" x="20" y="680" width="740" height="80" rx="10"/>
+<text class="ts" x="32" y="694" dominant-baseline="central">serviços externos</text>
+<rect x="36" y="706" width="162" height="44" rx="6"/>
+<text class="th" x="117" y="722" text-anchor="middle" dominant-baseline="central">Provedor SSO</text>
+<text class="ts" x="117" y="738" text-anchor="middle" dominant-baseline="central">OIDC e JWKS</text>
+<rect x="218" y="706" width="162" height="44" rx="6"/>
+<text class="th" x="299" y="722" text-anchor="middle" dominant-baseline="central">Redis</text>
+<text class="ts" x="299" y="738" text-anchor="middle" dominant-baseline="central">sessão e cache</text>
+<rect x="400" y="706" width="162" height="44" rx="6"/>
+<text class="th" x="481" y="722" text-anchor="middle" dominant-baseline="central">API Spring Boot</text>
+<text class="ts" x="481" y="738" text-anchor="middle" dominant-baseline="central">recurso protegido</text>
+<rect x="582" y="706" width="162" height="44" rx="6"/>
+<text class="th" x="663" y="722" text-anchor="middle" dominant-baseline="central">Coletor OTel</text>
+<text class="ts" x="663" y="738" text-anchor="middle" dominant-baseline="central">traces</text>
+</g>
+
+<line class="arr" x1="144" y1="82" x2="144" y2="139" marker-end="url(#seta)"/>
+<line class="arr" x1="390" y1="82" x2="390" y2="139" marker-end="url(#seta)"/>
+<path class="arr" d="M636 82 V124 H520 V139" marker-end="url(#seta)"/>
+<text class="lbl" x="528" y="115" dominant-baseline="central">estáticos</text>
+<line class="arr" x1="120" y1="263" x2="120" y2="294" marker-end="url(#seta)"/>
+<text class="lbl" x="132" y="281" dominant-baseline="central">requisições com cookie</text>
+<line class="arr" x1="480" y1="300" x2="480" y2="269" marker-end="url(#seta)"/>
+<text class="lbl" x="468" y="281" text-anchor="end" dominant-baseline="central">RSC, JSON e eventos</text>
+<line class="arr" x1="117" y1="640" x2="117" y2="700" marker-end="url(#seta)"/>
+<line class="arr" x1="299" y1="640" x2="299" y2="700" marker-end="url(#seta)"/>
+<line class="arr" x1="481" y1="640" x2="481" y2="700" marker-end="url(#seta)"/>
+<line class="arr" x1="663" y1="640" x2="663" y2="700" marker-end="url(#seta)"/>
+</svg>

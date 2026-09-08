@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 700" width="840" height="700" role="img" aria-labelledby="t d">
+<title id="t">Núcleo funcional do BFF e extensões removíveis</title>
+<desc id="d">Coluna esquerda: oito elementos do núcleo, obrigatórios, cada um derivado de um requisito. Coluna direita: cinco extensões, cada uma com seu modo de degradação quando desligada. Faixa inferior: a regra que separa núcleo de extensão.</desc>
+<style>
+svg{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+:root{
+--gf:#F1EFE8;--gs:#5F5E5A;--gt:#2C2C2A;--gm:#5F5E5A;
+--tf:#E1F5EE;--ts:#0F6E56;--tt:#04342C;--tm:#0F6E56;
+--pf:#EEEDFE;--ps:#534AB7;--pt:#26215C;--pm:#534AB7;
+--cf:#FAECE7;--cs:#993C1D;--ct:#4A1B0C;--cm:#993C1D;}
+@media (prefers-color-scheme:dark){:root{
+--gf:#444441;--gs:#B4B2A9;--gt:#D3D1C7;--gm:#B4B2A9;
+--tf:#085041;--ts:#5DCAA5;--tt:#9FE1CB;--tm:#5DCAA5;
+--pf:#3C3489;--ps:#AFA9EC;--pt:#CECBF6;--pm:#AFA9EC;
+--cf:#712B13;--cs:#F0997B;--ct:#F5C4B3;--cm:#F0997B;}}
+.gray rect{fill:var(--gf);stroke:var(--gs);stroke-width:.5}
+.gray .th{fill:var(--gt)}.gray .ts{fill:var(--gm)}
+.teal rect{fill:var(--tf);stroke:var(--ts);stroke-width:.5}
+.teal .th{fill:var(--tt)}.teal .ts{fill:var(--tm)}
+.purple rect{fill:var(--pf);stroke:var(--ps);stroke-width:.5}
+.purple .th{fill:var(--pt)}.purple .ts{fill:var(--pm)}
+.coral rect{fill:var(--cf);stroke:var(--cs);stroke-width:.5}
+.coral .th{fill:var(--ct)}.coral .ts{fill:var(--cm)}
+rect.hollow{fill:none}
+rect.tracejado{fill:none;stroke-dasharray:5 4}
+.th{font-size:14px;font-weight:500}.ts{font-size:12px}
+</style>
+
+<g class="teal">
+<rect class="hollow" x="16" y="12" width="390" height="516" rx="10"/>
+<text class="th" x="30" y="34" dominant-baseline="central">NÚCLEO — obrigatório</text>
+<text class="ts" x="30" y="52" dominant-baseline="central">cada item deriva de um requisito, não de conveniência</text>
+
+<rect x="32" y="68" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="86" dominant-baseline="central">1 · Sessão opaca no servidor</text>
+<text class="ts" x="44" y="103" dominant-baseline="central">cookie httpOnly · token no Redis · nunca no navegador</text>
+
+<rect x="32" y="124" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="142" dominant-baseline="central">2 · Autorização só no domínio</text>
+<text class="ts" x="44" y="159" dominant-baseline="central">401 / 403 / 404 conforme critério · BFF não decide</text>
+
+<rect x="32" y="180" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="198" dominant-baseline="central">3 · Composição no servidor</text>
+<text class="ts" x="44" y="215" dominant-baseline="central">Server Components + DAL como porta única</text>
+
+<rect x="32" y="236" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="254" dominant-baseline="central">4 · Mutação por Server Action</text>
+<text class="ts" x="44" y="271" dominant-baseline="central">sessão revalidada · entrada validada · If-Match</text>
+
+<rect x="32" y="292" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="310" dominant-baseline="central">5 · Erro normalizado</text>
+<text class="ts" x="44" y="327" dominant-baseline="central">{ codigo, supportId } · sem stacktrace, sem framework</text>
+
+<rect x="32" y="348" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="366" dominant-baseline="central">6 · Isolamento de servidor</text>
+<text class="ts" x="44" y="383" dominant-baseline="central">server-only · fronteira de compilação, não de runtime</text>
+
+<rect x="32" y="404" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="422" dominant-baseline="central">7 · Allowlist de destino outbound</text>
+<text class="ts" x="44" y="439" dominant-baseline="central">origem fixa · exigência da RFC 10017</text>
+
+<rect x="32" y="460" width="358" height="46" rx="6"/>
+<text class="th" x="44" y="478" dominant-baseline="central">8 · Trace contínuo, sem dado pessoal</text>
+<text class="ts" x="44" y="495" dominant-baseline="central">correlação por supportId · allowlist de atributos</text>
+</g>
+
+<g class="purple">
+<rect class="hollow" x="430" y="12" width="394" height="516" rx="10"/>
+<text class="th" x="444" y="34" dominant-baseline="central">EXTENSÕES — removíveis</text>
+<text class="ts" x="444" y="52" dominant-baseline="central">desligar degrada; nunca quebra</text>
+
+<rect class="tracejado" x="446" y="68" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="88" dominant-baseline="central">Tempo real (SSE)</text>
+<text class="ts" x="458" y="108" dominant-baseline="central">desligado → a tela atualiza na navegação,</text>
+<text class="ts" x="458" y="122" dominant-baseline="central">em vez de em ~2 s</text>
+
+<rect class="tracejado" x="446" y="140" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="160" dominant-baseline="central">Cache — no domínio, se necessário</text>
+<text class="ts" x="458" y="180" dominant-baseline="central">desligado → mais carga de leitura no domínio;</text>
+<text class="ts" x="458" y="194" dominant-baseline="central">nenhuma resposta muda</text>
+
+<rect class="tracejado" x="446" y="212" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="232" dominant-baseline="central">Cache de cliente (React Query)</text>
+<text class="ts" x="458" y="252" dominant-baseline="central">desligado → refetch a cada montagem;</text>
+<text class="ts" x="458" y="266" dominant-baseline="central">scroll e paginação ficam piores</text>
+
+<rect class="tracejado" x="446" y="284" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="304" dominant-baseline="central">Telemetria de navegador</text>
+<text class="ts" x="458" y="324" dominant-baseline="central">desligado → o trace começa no BFF</text>
+<text class="ts" x="458" y="338" dominant-baseline="central">em vez do clique do usuário</text>
+
+<rect class="tracejado" x="446" y="356" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="376" dominant-baseline="central">CSP com nonce</text>
+<text class="ts" x="458" y="396" dominant-baseline="central">desligado → política mais fraca contra XSS;</text>
+<text class="ts" x="458" y="410" dominant-baseline="central">nenhuma funcionalidade muda</text>
+
+<rect class="tracejado" x="446" y="428" width="362" height="60" rx="6"/>
+<text class="th" x="458" y="448" dominant-baseline="central">Atualização otimista</text>
+<text class="ts" x="458" y="468" dominant-baseline="central">desligada → o usuário espera a resposta HTTP</text>
+<text class="ts" x="458" y="482" dominant-baseline="central">antes de ver o efeito</text>
+</g>
+
+<g class="coral">
+<rect x="16" y="548" width="808" height="136" rx="10"/>
+<text class="th" x="32" y="572" dominant-baseline="central">A regra que separa núcleo de extensão</text>
+<text class="ts" x="32" y="598" dominant-baseline="central">Desligue o componente e responda: o sistema continua CORRETO?</text>
+<text class="ts" x="32" y="620" dominant-baseline="central">SIM, só fica mais lento, menos fresco ou menos observável   →   é extensão</text>
+<text class="ts" x="32" y="640" dominant-baseline="central">NÃO, alguma resposta muda ou alguma garantia cai   →   é núcleo, e precisa ser justificado como tal</text>
+<text class="ts" x="32" y="664" dominant-baseline="central">O cache de payload falhou neste teste em quatro pontos: relay do SSE, recuperação, sessão e semântica do ETag.</text>
+</g>
+</svg>
