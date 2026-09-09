@@ -11,6 +11,12 @@
 ## Global Constraints
 
 - **Node 24.7+, pnpm 11+.** Nenhuma outra versão foi verificada.
+- **O pnpm 11 edita o `pnpm-workspace.yaml` sozinho ao instalar um pacote recém-publicado.**
+  Ele acrescenta um bloco `minimumReleaseAgeExclude` com o pacote e a versão, e segue. É
+  proteção de supply-chain contra pacote publicado há poucos minutos — que é exatamente o
+  caso de `@erp/contratos` e `@erp/nucleo` vindos do Verdaccio local. **Não é desvio do
+  implementador e não deve ser revertido:** o arquivo commitado vai divergir do que este
+  plano mostra, e isso é esperado.
 - **Cada sub-repo carrega um `pnpm-workspace.yaml` com `packages: []`.** Sem ele, o
   `pnpm-workspace.yaml` do repositório externo captura o `pnpm install` e as dependências
   vão para o `node_modules` de fora — o pacote parece instalado e não está. O arquivo diz
