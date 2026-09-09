@@ -289,16 +289,26 @@ A rodada 1 fecha quando, com Verdaccio, stub, shell e zona no ar:
 
 ## 10. Agentes de projeto
 
-Três subagentes em `.claude/agents/`, cada um cobrindo um ponto onde este desenho é fácil
-de furar sem que ninguém perceba:
+Quatro subagentes em `.claude/agents/`, cada um cobrindo um ponto onde este desenho é
+fácil de furar sem que ninguém perceba. Os três primeiros leem; o quarto executa:
 
 | Agente | Quando | Autoridade |
 |---|---|---|
 | `arquiteto-mfe` | antes de escrever qualquer peça nova | aplica o teste núcleo/extensão, decide a camada, **recusa porta sem variação conhecida** |
 | `revisor-mfe` | ao terminar tarefa, antes de commit ou merge | reprova vazamento, fronteira rompida, autoridade no lugar errado, restrição de zona violada e escrita na rodada 1 |
 | `testes-invariantes` | ao implementar núcleo, porta, adaptador ou zona | mapeia a mudança para as sete verificações da §6, escreve as que faltam, confirma que cada uma falha pela razão certa antes de passar |
+| `simulador-condicoes` | com o sistema de pé; antes de release | põe o sistema sob condição adversária, degradada e de carga; reporta observado × declarado, e só afirma o que executou |
 
-Nenhum dos três escreve código de aplicação. O arquiteto não implementa; o revisor não
-corrige; o de testes escreve teste, não produção. A separação existe para que a revisão
-não seja feita por quem tomou a decisão que está sendo revisada.
+Nenhum dos quatro escreve código de aplicação. O arquiteto não implementa; o revisor não
+corrige; o de testes escreve teste, não produção; o simulador não conserta o que encontra.
+A separação existe para que a revisão não seja feita por quem tomou a decisão revisada.
+
+O `simulador-condicoes` tem um mandato que os outros não têm: **medir o que os documentos
+admitem não ter medido.** `08-desempenho.md` se declara modelo analítico e proíbe seu uso
+como evidência de p99; `11-testes.md` §8 lista o que nenhum teste cobre; `06-seguranca.md`
+§1 marca três ameaças como não mitigadas. Essas lacunas são o escopo dele, e a medição de
+duplicação de bundle entre zonas é o que destrava a questão em aberto do ADR-0008.
+
+Ele opera só em `localhost`, só sobre processos que ele mesmo iniciou, e nunca aponta carga
+ou sonda adversária para `mira-backend` ou host remoto sem autorização explícita.
 
