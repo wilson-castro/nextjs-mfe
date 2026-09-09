@@ -194,6 +194,14 @@ tentação é repassá-lo como veio.
 Vale para a falha de zona pela mesma razão: uma zona não confia no que a outra manda
 (§3), e um fragmento que falha devolve erro pelo mesmo caminho.
 
+**Validar formato não é validar sentido — e há um desenho mais forte.** Uma regex que
+aceita `[A-Za-z0-9_-]{1,64}` barra um stacktrace inteiro, mas deixa passar um nome de
+classe sem pontuação, um blob base64url e um hostname interno: os três cabem no formato.
+O desenho que elimina a classe toda é o BFF **cunhar** o próprio `supportId` e registrar a
+correlação no log, em vez de aceitar o do domínio — aí nada do corpo alheio atravessa. Não
+adotado: mudaria o contrato que [`00-caso.md`](../comum/docs/00-caso.md) §C8 descreve.
+Registrado como risco residual conhecido e limitado.
+
 ---
 
 ## 5. Contratos e design system

@@ -1,3 +1,6 @@
 [submodule "repos/erp-contratos"]
 	path = repos/erp-contratos
 	url = ./repos/erp-contratos
+[submodule "repos/erp-nucleo"]
+	path = repos/erp-nucleo
+	url = ./repos/erp-nucleo
