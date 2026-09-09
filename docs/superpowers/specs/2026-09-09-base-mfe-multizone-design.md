@@ -146,7 +146,8 @@ O `package.json` publica exatamente três subpaths:
 | `@erp/nucleo/testing` | adaptadores fake | teste |
 
 Os adaptadores são expostos apenas como fábricas nomeadas reexportadas pela raiz —
-`dadosHttp`, `sessaoRedis`, `sessaoMemoria`, `oidc`. Seus módulos não têm subpath próprio,
+`dadosHttp`, `sessaoArquivo`, `identidadeDev` na rodada 1; `sessaoRedis` e `oidc` na rodada 2.
+Seus módulos não têm subpath próprio,
 e `interno/` não é alcançável de forma alguma. É isso que impede uma zona de chamar
 `upstream()` direto e furar a allowlist do elemento 7.
 
@@ -158,8 +159,9 @@ import { criarNucleo, dadosHttp, sessaoRedis, oidc } from '@erp/nucleo'
 
 export const nucleo = criarNucleo({
   dados:      dadosHttp({ baseUrl: process.env.API_BASE_URL! }),
-  sessao:     sessaoRedis({ url: process.env.REDIS_URL! }),
-  identidade: oidc({ issuer: process.env.OIDC_ISSUER! }),
+  sessao:     sessaoArquivo({ dir: process.env.SESSAO_DIR! }),   // rodada 1; sessaoRedis na 2
+  identidade: identidadeDev({ }),                                // rodada 1; oidc na 2
+  lerCookieDeSessao: async () => (await cookies()).get('__Host-session')?.value,
 })
 ```
 
@@ -168,7 +170,7 @@ export const nucleo = criarNucleo({
 import { criarProxy } from '@erp/nucleo'
 import { nucleo } from './lib/nucleo'
 
-export default criarProxy(nucleo, { prefixo: '/pedidos' })
+export default criarProxy({ prefixo: '/pedidos', rotaLogin: '/login' })
 ```
 
 Trocar o stub pelo domínio Spring Boot real é trocar `baseUrl`. Trocar Redis por memória é trocar um
@@ -177,6 +179,15 @@ código de aplicação — é o que "genérico e extensível" significa neste de
 
 A fábrica `criarProxy` existe por causa da limitação 4: `proxy.ts` não atravessa zonas, e
 sem fábrica cada MFE reimplementaria checagem de sessão e CSP, divergindo com o tempo.
+
+**`criarProxy` não recebe o núcleo, e isso é deliberado.** `06-seguranca.md` §2 diz que a
+camada 1 faz **zero I/O** — ela roda em toda requisição, inclusive prefetch de `<Link>`, e
+uma leitura ali multiplica carga por quanto o usuário passa o mouse sobre links. Ela só
+verifica **presença** de cookie; um cookie forjado passa, e a camada 2 pega. Dar o núcleo à
+fábrica seria convidar I/O para dentro dela.
+
+`lerCookieDeSessao` é injetado em vez de `criarNucleo` importar `next/headers` porque isso
+mantém as fábricas testáveis fora de um contexto de requisição do Next.
 
 ---
 
