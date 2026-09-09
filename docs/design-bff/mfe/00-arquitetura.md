@@ -171,6 +171,25 @@ pela zona, e são processos distintos.
 
 ---
 
+### 4.3 O erro normalizado tem dois campos, e ambos atravessam
+
+O elemento 5 existe para que nada da implementação do domínio chegue ao chamador. Na
+prática ele deixa passar exatamente **dois** campos: `codigo` e `supportId`.
+
+É fácil validar só o primeiro. `codigo` é conferido contra uma lista fechada — qualquer
+valor desconhecido vira `ERRO_INTERNO`. `supportId` não tem lista fechada, e por isso a
+tentação é repassá-lo como veio.
+
+> **Regra.** Todo campo que atravessa a fronteira de erro é validado, não só o que tem
+> lista. Um `supportId` sem verificação de tipo e de tamanho é um canal aberto: o domínio
+> pode pôr ali o stacktrace que o `codigo` impediu de passar, e o teste que prova que
+> `message` não vaza continua verde.
+
+Vale para a falha de zona pela mesma razão: uma zona não confia no que a outra manda
+(§3), e um fragmento que falha devolve erro pelo mesmo caminho.
+
+---
+
 ## 5. Contratos e design system
 
 ### 5.1 `@erp/contratos`
