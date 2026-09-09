@@ -130,7 +130,11 @@ if (acao === 'up') {
   console.log(`verdaccio subindo, pid ${p.pid}, http://localhost:4873`)
 } else if (acao === 'down') {
   if (!existsSync(pid)) { console.log('nada rodando'); process.exit(0) }
-  try { process.kill(Number(readFileSync(pid, 'utf8')), 'SIGTERM') } catch {}
+  // O PID gravado é o do wrapper `pnpm dlx`, não o do Verdaccio: são dois
+  // processos. `detached: true` torna o wrapper líder do grupo, então o kill
+  // NEGATIVO atinge o grupo inteiro. Matar só o PID positivo deixaria o
+  // Verdaccio segurando a porta 4873 enquanto o script diz que o derrubou.
+  try { process.kill(-Number(readFileSync(pid, 'utf8')), 'SIGTERM') } catch {}
   unlinkSync(pid)
   console.log('verdaccio derrubado')
 } else {
@@ -149,6 +153,17 @@ curl -sf http://localhost:4873/-/ping && echo REGISTRY_OK
 ```
 Expected: imprime `REGISTRY_OK`. Se falhar, aguarde mais 5 s — o primeiro `pnpm dlx` baixa o Verdaccio.
 
+Verifique também o `down`, que é metade do contrato de ciclo de vida e é fácil de deixar
+sem teste:
+
+```bash
+node repos/scripts/registry.mjs down
+sleep 2
+curl -sf http://localhost:4873/-/ping >/dev/null && echo "AINDA NO AR — o down falhou" || echo "DOWN_OK"
+node repos/scripts/registry.mjs up && sleep 8   # deixe no ar para as tasks seguintes
+```
+Expected: `DOWN_OK`, e o registry de volta no ar depois.
+
 - [ ] **Step 4: Registrar o uso no README**
 
 `repos/README.md`:
@@ -156,7 +171,9 @@ Expected: imprime `REGISTRY_OK`. Se falhar, aguarde mais 5 s — o primeiro `pnp
 ```markdown
 # Repositórios da base MFE
 
-Cada subdiretório é um repositório git independente. `repos/` é ignorado pelo git externo.
+Cada subdiretório é um repositório git independente, registrado como submódulo de
+nextjs-mfe. `repos/` é rastreado; só `.verdaccio/storage/` e `.verdaccio/verdaccio.pid`
+são ignorados.
 
     node scripts/registry.mjs up     # sobe o Verdaccio em :4873
     node scripts/registry.mjs down
@@ -171,7 +188,7 @@ git add repos/.verdaccio/config.yaml repos/scripts/registry.mjs repos/README.md
 git commit -m "chore: add local Verdaccio registry for the MFE base"
 ```
 
-Nota: `repos/.verdaccio/storage/` e `repos/.verdaccio/verdaccio.pid` não devem ser commitados. Adicione ao `.gitignore` da raiz se aparecerem.
+Nota: `repos/.verdaccio/storage/` e `repos/.verdaccio/verdaccio.pid` já estão no `.gitignore` da raiz. Se aparecerem em `git status`, reporte como concern em vez de editar o `.gitignore`.
 
 ---
 
