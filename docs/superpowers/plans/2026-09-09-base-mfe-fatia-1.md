@@ -438,12 +438,17 @@ export const cobreTodaAcao: Record<(typeof ACOES_PEDIDO)[number], boolean> =
   {} as PermissoesPedido
 ```
 
-`repos/erp-contratos/tsconfig.tipos.json`:
+`repos/erp-contratos/tsconfig.tipos.json`. O `rootDir: "."` sobrescreve o `"src"` herdado:
+sem ele, incluir um arquivo de `test/` dispara `TS6059 — File is not under rootDir`, um erro
+estrutural que acontece antes de qualquer checagem semântica e que `noEmit` não evita.
 
 ```json
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "noEmit": true },
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
   "include": ["src", "test/tipos.test-d.ts"]
 }
 ```
