@@ -11,6 +11,10 @@
 ## Global Constraints
 
 - **Node 24.7+, pnpm 11+.** Nenhuma outra versão foi verificada.
+- **Cada sub-repo carrega um `pnpm-workspace.yaml` com `packages: []`.** Sem ele, o
+  `pnpm-workspace.yaml` do repositório externo captura o `pnpm install` e as dependências
+  vão para o `node_modules` de fora — o pacote parece instalado e não está. O arquivo diz
+  a verdade da decisão de multi-repo: cada repositório é raiz de workspace própria.
 - **Next 16.** O arquivo de middleware chama-se `proxy.ts` no Next 16 — é o nome usado em todos os documentos. Não crie `middleware.ts`.
 - **Registry:** Verdaccio em `http://localhost:4873`, escopo `@erp`. Ordem de publicação sempre **contratos → nucleo → consumidores**.
 - **Portas de rede:** 3000 shell, 3001 zona pedidos, 4000 stub, 4873 verdaccio.
@@ -205,6 +209,7 @@ Nota: `repos/.verdaccio/storage/` e `repos/.verdaccio/verdaccio.pid` já estão 
 - Create: `repos/erp-contratos/package.json`
 - Create: `repos/erp-contratos/tsconfig.json`
 - Create: `repos/erp-contratos/.npmrc`
+- Create: `repos/erp-contratos/pnpm-workspace.yaml`
 - Create: `repos/erp-contratos/src/pedido.ts`
 - Create: `repos/erp-contratos/src/erros.ts`
 - Create: `repos/erp-contratos/src/index.ts`
@@ -265,6 +270,12 @@ cd repos/erp-contratos && git init -q
 
 ```
 @erp:registry=http://localhost:4873
+```
+
+`repos/erp-contratos/pnpm-workspace.yaml` — **todo sub-repo leva este arquivo, idêntico**:
+
+```yaml
+packages: []
 ```
 
 - [ ] **Step 2: Escrever o teste que falha**
@@ -512,6 +523,7 @@ Esta task entrega os elementos 5 (erro normalizado) e 7 (allowlist outbound) do 
 - Create: `repos/erp-nucleo/package.json`
 - Create: `repos/erp-nucleo/tsconfig.json`
 - Create: `repos/erp-nucleo/.npmrc`
+- Create: `repos/erp-nucleo/pnpm-workspace.yaml`
 - Create: `repos/erp-nucleo/src/interno/erros.ts`
 - Create: `repos/erp-nucleo/src/interno/upstream.ts`
 - Test: `repos/erp-nucleo/test/allowlist.test.mjs`
@@ -580,6 +592,12 @@ cd repos/erp-nucleo && git init -q
 
 ```
 @erp:registry=http://localhost:4873
+```
+
+`repos/erp-nucleo/pnpm-workspace.yaml`:
+
+```yaml
+packages: []
 ```
 
 - [ ] **Step 2: Escrever os testes de allowlist que falham**
@@ -737,7 +755,16 @@ export async function normalizar<T>(res: Response): Promise<Resposta<T>> {
   }
   const etag = res.headers.get('etag')
   const body = (await res.json().catch(() => undefined)) as T | undefined
-  return etag === null ? { status: res.status, body } : { status: res.status, versao: etag, body }
+
+  // Construído por atribuição, não por literal. Sob `exactOptionalPropertyTypes`,
+  // `body?: T` recusa um `T | undefined`: a flag distingue "chave ausente" de "chave
+  // presente valendo undefined". É a mesma distinção que sustenta a ausência total do
+  // bloco sensível em `@erp/contratos`, então desligá-la aqui para simplificar custaria
+  // a garantia lá.
+  const resposta: Resposta<T> = { status: res.status }
+  if (etag !== null) resposta.versao = etag
+  if (body !== undefined) resposta.body = body
+  return resposta
 }
 ```
 
@@ -1556,6 +1583,7 @@ git add -A && git commit -m "feat: restrict package exports and add layer bounda
 
 **Files:**
 - Create: `repos/erp-dominio-stub/package.json`
+- Create: `repos/erp-dominio-stub/pnpm-workspace.yaml`
 - Create: `repos/erp-dominio-stub/src/atores.mjs`
 - Create: `repos/erp-dominio-stub/src/pedido-8821.mjs`
 - Create: `repos/erp-dominio-stub/src/projetar.mjs`
@@ -1627,6 +1655,12 @@ Expected: FAIL — `Cannot find module '../src/projetar.mjs'`.
 - [ ] **Step 3: Escrever os atores e o fixture**
 
 `repos/erp-dominio-stub/package.json`:
+
+`repos/erp-dominio-stub/pnpm-workspace.yaml`:
+
+```yaml
+packages: []
+```
 
 ```json
 {
@@ -1821,6 +1855,7 @@ git add -A && git commit -m "feat: add domain stub serving the purchase order ca
 
 **Files:**
 - Create: `repos/erp-shell/package.json`, `tsconfig.json`, `.npmrc`, `next.config.ts`
+- Create: `repos/erp-shell/pnpm-workspace.yaml`
 - Create: `repos/erp-shell/lib/nucleo.ts`
 - Create: `repos/erp-shell/app/layout.tsx`
 - Create: `repos/erp-shell/app/page.tsx`
@@ -1873,6 +1908,12 @@ cd repos/erp-shell && git init -q
 
 ```
 @erp:registry=http://localhost:4873
+```
+
+`repos/erp-shell/pnpm-workspace.yaml`:
+
+```yaml
+packages: []
 ```
 
 `repos/erp-shell/tsconfig.json`:
@@ -2063,6 +2104,7 @@ git add -A && git commit -m "feat: add shell with dev login, session cookie and 
 
 **Files:**
 - Create: `repos/erp-mfe-pedidos/package.json`, `tsconfig.json`, `.npmrc`, `next.config.ts`
+- Create: `repos/erp-mfe-pedidos/pnpm-workspace.yaml`
 - Create: `repos/erp-mfe-pedidos/proxy.ts`
 - Create: `repos/erp-mfe-pedidos/lib/nucleo.ts`
 - Create: `repos/erp-mfe-pedidos/app/layout.tsx`
@@ -2115,6 +2157,12 @@ cd repos/erp-mfe-pedidos && git init -q
 
 ```
 @erp:registry=http://localhost:4873
+```
+
+`repos/erp-mfe-pedidos/pnpm-workspace.yaml`:
+
+```yaml
+packages: []
 ```
 
 `repos/erp-mfe-pedidos/tsconfig.json`:
