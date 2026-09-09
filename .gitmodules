@@ -1,0 +1,3 @@
+[submodule "repos/erp-contratos"]
+	path = repos/erp-contratos
+	url = ./repos/erp-contratos
