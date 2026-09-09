@@ -14,7 +14,10 @@
 - **Next 16.** O arquivo de middleware chama-se `proxy.ts` no Next 16 — é o nome usado em todos os documentos. Não crie `middleware.ts`.
 - **Registry:** Verdaccio em `http://localhost:4873`, escopo `@erp`. Ordem de publicação sempre **contratos → nucleo → consumidores**.
 - **Portas de rede:** 3000 shell, 3001 zona pedidos, 4000 stub, 4873 verdaccio.
-- **Testes:** `node --test` sobre `.test.mjs` importando de `dist/`. **Não instale framework de teste.**
+- **Testes:** `node --test test/*.test.mjs` sobre arquivos que importam de `dist/`.
+  **Não instale framework de teste.** O glob não é estilo: em Node 24.7 o argumento de
+  diretório (`node --test test/`) reporta `fail 1` sem executar arquivo nenhum, e ainda
+  assim sai com código 0 — falha silenciosa, verificada num projeto limpo.
 - **Instalações:** as únicas dependências deste plano são `next`, `react`, `react-dom`, `typescript`, `@types/*` e `verdaccio` (via `pnpm dlx`, sem instalar). Qualquer pacote além destes exige aprovação antes.
 - **A fatia 1 é somente leitura.** Nenhuma Server Action, nenhuma rota de mutação, nenhum `If-Match`. `PortaDeDados` expõe apenas leitura — a restrição é estrutural, não de disciplina.
 - **Atores do caso:** `gabrigas` (`OPERADOR`, `OPS-NORDESTE`), `marina` (`OPERADOR`, `OPS-NORDESTE` + `COMERCIAL-NORDESTE`), `rafael` (`ADMIN`, `OPS-NORDESTE`), `carla` (`OPERADOR`, `OPS-SUL`).
@@ -227,7 +230,7 @@ cd repos/erp-contratos && git init -q
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "pnpm build && node --test test/",
+    "test": "pnpm build && node --test test/*.test.mjs",
     "publicar": "pnpm build && pnpm publish --no-git-checks --registry http://localhost:4873"
   },
   "devDependencies": { "typescript": "^5.6.0" },
@@ -452,7 +455,7 @@ cd repos/erp-nucleo && git init -q
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "fronteira": "node scripts/fronteira.mjs",
-    "test": "pnpm build && pnpm fronteira && node --conditions react-server --test test/",
+    "test": "pnpm build && pnpm fronteira && node --conditions react-server --test test/*.test.mjs",
     "publicar": "pnpm build && pnpm publish --no-git-checks --registry http://localhost:4873"
   },
   "dependencies": { "@erp/contratos": "0.1.0" },
@@ -1510,7 +1513,7 @@ Run:
 ```bash
 mkdir -p repos/erp-dominio-stub/src repos/erp-dominio-stub/test
 cd repos/erp-dominio-stub && git init -q
-node --test test/
+node --test test/*.test.mjs
 ```
 Expected: FAIL — `Cannot find module '../src/projetar.mjs'`.
 
@@ -1524,7 +1527,7 @@ Expected: FAIL — `Cannot find module '../src/projetar.mjs'`.
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node src/servidor.mjs", "test": "node --test test/" }
+  "scripts": { "dev": "node src/servidor.mjs", "test": "node --test test/*.test.mjs" }
 }
 ```
 
@@ -1612,7 +1615,7 @@ export function projetar(pedido, ator) {
 
 - [ ] **Step 5: Rodar e confirmar que passa**
 
-Run: `cd repos/erp-dominio-stub && node --test test/`
+Run: `cd repos/erp-dominio-stub && node --test test/*.test.mjs`
 Expected: PASS, 5 testes.
 
 - [ ] **Step 6: Escrever o servidor**
@@ -1980,7 +1983,7 @@ cd repos/erp-mfe-pedidos && git init -q
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "lockstep": "node scripts/verificar-lockstep.mjs"
   },
   "dependencies": {
@@ -2198,7 +2201,7 @@ Esta é a task que decide se a fatia 1 vale. Todas as anteriores podem estar ver
 - Create: `repos/erp-mfe-pedidos/test/ambiente.mjs`
 - Create: `repos/erp-mfe-pedidos/test/invariantes.test.mjs`
 - Create: `repos/erp-mfe-pedidos/test/caso.test.mjs`
-- Nota: `"test": "node --test test/"` já está no `package.json` criado na Task 9
+- Nota: `"test": "node --test test/*.test.mjs"` já está no `package.json` criado na Task 9
 
 **Interfaces:**
 - Consumes: shell em `:3000`, zona em `:3001`, stub em `:4000`, todos no ar
@@ -2377,7 +2380,7 @@ cd repos/erp-dominio-stub && node src/servidor.mjs &
 cd repos/erp-shell && pnpm dev &
 cd repos/erp-mfe-pedidos && pnpm dev &
 sleep 12
-cd repos/erp-mfe-pedidos && node --test test/
+cd repos/erp-mfe-pedidos && node --test test/*.test.mjs
 ```
 Expected: PASS, 11 testes.
 
@@ -2409,7 +2412,7 @@ Reverta e confirme que voltam ao verde:
 cd repos/erp-dominio-stub && git checkout src/projetar.mjs
 kill %1 2>/dev/null; node src/servidor.mjs &
 sleep 2
-cd ../erp-mfe-pedidos && node --test test/
+cd ../erp-mfe-pedidos && node --test test/*.test.mjs
 ```
 
 - [ ] **Step 6: Provar o invariante 6 — `server-only` é fronteira de BUILD**
