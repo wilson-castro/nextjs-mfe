@@ -544,8 +544,7 @@ cd repos/erp-nucleo && git init -q
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "fronteira": "node scripts/fronteira.mjs",
-    "test": "pnpm build && pnpm fronteira && node --conditions react-server --test test/*.test.mjs",
+    "test": "pnpm build && node --conditions react-server --test test/*.test.mjs",
     "publicar": "pnpm build && pnpm publish --no-git-checks --registry http://localhost:4873"
   },
   "dependencies": { "@erp/contratos": "0.1.0" },
@@ -1442,6 +1441,24 @@ Substitua o bloco de `package.json` de `erp-nucleo` acrescentando, logo após `"
     "./testing": { "types": "./dist/testing/index.d.ts", "default": "./dist/testing/index.js" }
   },
 ```
+
+- [ ] **Step 4b: Ligar o lint de fronteira ao `test`**
+
+O script `fronteira` não existia até agora — a Task 3 deixou o `test` sem ele de propósito,
+porque um `test` que chama um script inexistente não chega nem a RED. Agora que
+`scripts/fronteira.mjs` passa a existir (Step 5), acrescente em `scripts`:
+
+```json
+    "fronteira": "node scripts/fronteira.mjs",
+```
+
+e troque o `test` para rodá-lo antes dos testes:
+
+```json
+    "test": "pnpm build && pnpm fronteira && node --conditions react-server --test test/*.test.mjs",
+```
+
+A ordem importa: a fronteira é mais barata que a suíte e falha mais cedo.
 
 - [ ] **Step 5: Escrever o lint de fronteira**
 
