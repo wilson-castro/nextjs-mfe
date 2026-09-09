@@ -16,7 +16,9 @@ if (acao === 'up') {
   console.log(`verdaccio subindo, pid ${p.pid}, http://localhost:4873`)
 } else if (acao === 'down') {
   if (!existsSync(pid)) { console.log('nada rodando'); process.exit(0) }
-  try { process.kill(Number(readFileSync(pid, 'utf8')), 'SIGTERM') } catch {}
+  // Negative PID kills the process group; detached: true makes spawn() its own group leader.
+  // Without the negative sign, only the pnpm wrapper dies, leaving the actual Verdaccio running.
+  try { process.kill(-Number(readFileSync(pid, 'utf8')), 'SIGTERM') } catch {}
   unlinkSync(pid)
   console.log('verdaccio derrubado')
 } else {
