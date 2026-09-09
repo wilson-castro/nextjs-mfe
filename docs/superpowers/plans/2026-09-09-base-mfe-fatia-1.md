@@ -1133,7 +1133,7 @@ export function dadosFake(
 - [ ] **Step 6: Rodar e confirmar que passa**
 
 Run: `cd repos/erp-nucleo && pnpm test`
-Expected: PASS, 23 testes — 15 das tasks anteriores mais 8 desta.
+Expected: PASS, 22 testes — 15 das tasks anteriores mais 7 desta.
 
 O quarto teste passa porque `encodeURIComponent('../../admin')` vira `..%2F..%2Fadmin`, que resolve para `/pedidos/..%2F..%2Fadmin` — mesma origem, mas o stub devolverá `404`, e o teste só exige que rejeite.
 
