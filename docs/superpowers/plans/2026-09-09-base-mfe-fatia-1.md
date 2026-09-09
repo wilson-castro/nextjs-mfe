@@ -1195,6 +1195,7 @@ import { join } from 'node:path'
 import { sessaoArquivo } from '../dist/adaptadores/sessao-arquivo.js'
 import { identidadeDev } from '../dist/adaptadores/identidade-dev.js'
 import { criarNucleo } from '../dist/fabricas/criarNucleo.js'
+import { SessaoInvalida } from '../dist/interno/erros.js'
 import { dadosFake } from '../dist/testing/index.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'sessao-'))
@@ -1238,6 +1239,50 @@ test('a sessao entregue a aplicacao nao contem token nem grupos', async () => {
   const s = await nucleo.sessao.atual()
   assert.deepEqual(Object.keys(s).sort(), ['roles', 'sub'])
   assert.ok(!JSON.stringify(s).includes('token-secreto'))
+})
+
+test('entrar() devolve so o id opaco — o token nao chega a quem chama', async () => {
+  const store = sessaoArquivo({ dir })
+  const nucleo = criarNucleo({
+    dados: dadosFake({}), sessao: store, identidade: identidadeDev(),
+    lerCookieDeSessao: async () => undefined,
+  })
+  const id = await nucleo.sessao.entrar({ usuario: 'marina' })
+  assert.equal(typeof id, 'string')
+  assert.ok(!id.includes('dev.'), 'o id nao pode ser o token')
+
+  // a sessao ficou gravada, com o token, mas do lado do servidor
+  const guardada = await store.ler(id)
+  assert.equal(guardada.sub, 'marina')
+  assert.ok(guardada.accessToken.startsWith('dev.marina.'))
+
+  assert.equal(await nucleo.sessao.entrar({ usuario: 'ninguem' }), null)
+})
+
+test('o Nucleo nao expoe nenhuma rota para o token', async () => {
+  const nucleo = criarNucleo({
+    dados: dadosFake({}), sessao: sessaoArquivo({ dir }),
+    identidade: identidadeDev(), lerCookieDeSessao: async () => undefined,
+  })
+  assert.deepEqual(Object.keys(nucleo).sort(), ['dados', 'sessao'])
+  assert.equal(nucleo.identidade, undefined, 'identidade daria autenticar() -> token cru')
+  assert.equal(nucleo.store, undefined, 'store daria ler() -> token cru')
+})
+
+test('exigir() e encerrar() funcionam destruturados', async () => {
+  const store = sessaoArquivo({ dir })
+  await store.gravar('sid-9', { sub: 'rafael', roles: ['ADMIN'],
+                                accessToken: 'tk', expiraEm: Date.now() + 60_000 })
+  const nucleo = criarNucleo({
+    dados: dadosFake({}), sessao: store, identidade: identidadeDev(),
+    lerCookieDeSessao: async () => 'sid-9',
+  })
+  // destruturar quebraria um metodo que dependesse de `this`
+  const { exigir, encerrar } = nucleo.sessao
+  assert.equal((await exigir()).sub, 'rafael')
+  await encerrar('sid-9')
+  assert.equal(await store.ler('sid-9'), null)
+  await assert.rejects(() => exigir(), SessaoInvalida)
 })
 
 test('sessao expirada e tratada como ausente', async () => {
@@ -1420,6 +1465,7 @@ export function pode(
 
 ```ts
 import 'server-only'
+import { randomUUID } from 'node:crypto'
 import type { FabricaDeDados, PortaDeDados } from '../portas/dados.js'
 import type { StoreDeSessao, Sessao } from '../portas/sessao.js'
 import type { ProvedorDeIdentidade } from '../portas/identidade.js'
@@ -1448,10 +1494,10 @@ export type Nucleo = {
   sessao: {
     atual(): Promise<Sessao | null>
     exigir(): Promise<Sessao>
-    abrir(id: string, s: SessaoArmazenada): Promise<void>
+    /** Autentica, cunha o id opaco, grava, e devolve **só o id**. */
+    entrar(credencial: unknown): Promise<string | null>
     encerrar(id: string): Promise<void>
   }
-  identidade: ProvedorDeIdentidade
 }
 
 export function criarNucleo(cfg: ConfigDoNucleo): Nucleo {
@@ -1470,22 +1516,38 @@ export function criarNucleo(cfg: ConfigDoNucleo): Nucleo {
     return s.accessToken
   }
 
+  // Função nomeada, não método: `exigir` chamava `this.atual()`, e destruturar
+  // `const { exigir } = nucleo.sessao` quebrava o `this`. O método que mais provavelmente
+  // protege uma rota era o mais frágil do arquivo.
+  const atual = async (): Promise<Sessao | null> => {
+    const s = await armazenada()
+    // projeta: token e qualquer campo futuro ficam para trás
+    return s ? { sub: s.sub, roles: s.roles } : null
+  }
+
   return {
     dados: cfg.dados({ obterToken }),
-    identidade: cfg.identidade,
     sessao: {
-      abrir: (id, s) => cfg.sessao.gravar(id, s),
-      encerrar: (id) => cfg.sessao.remover(id),
-      async atual() {
-        const s = await armazenada()
-        // projeta: token e qualquer campo futuro ficam para trás
-        return s ? { sub: s.sub, roles: s.roles } : null
-      },
+      atual,
       async exigir() {
-        const s = await this.atual()
+        const s = await atual()
         if (!s) throw new SessaoInvalida()
         return s
       },
+      /**
+       * `identidade` NÃO é exposto no `Nucleo`, e `entrar` é a razão. O provedor devolve
+       * `SessaoArmazenada` — com o `accessToken` dentro — e o único chamador legítimo
+       * disso é quem vai gravar a sessão. Fazendo a fábrica autenticar, cunhar o id e
+       * gravar, o token nunca chega a quem chama: o shell recebe um id opaco e mais nada.
+       */
+      async entrar(credencial) {
+        const s = await cfg.identidade.autenticar(credencial)
+        if (!s) return null
+        const id = randomUUID()
+        await cfg.sessao.gravar(id, s)
+        return id
+      },
+      encerrar: (id) => cfg.sessao.remover(id),
     },
   }
 }
@@ -1515,6 +1577,11 @@ export function criarProxy(cfg: ConfigDoProxy) {
   return function proxy(req: NextRequest): NextResponse {
     const nonce = crypto.randomUUID().replaceAll('-', '')
 
+    // Fora do próprio prefixo, a zona não opina. O `matcher` já deveria garantir isso;
+    // esta linha faz o proxy virar no-op se alguém configurar o matcher errado, em vez
+    // de a zona passar a redirecionar rota que não é dela.
+    if (!req.nextUrl.pathname.startsWith(cfg.prefixo)) return NextResponse.next()
+
     if (!req.cookies.has(nome)) {
       // Location RELATIVO, de propósito. `NextResponse.redirect` exige URL absoluta e
       // montaria http://localhost:3001/login — a origem da ZONA, que o navegador nunca
@@ -1538,7 +1605,7 @@ export function criarProxy(cfg: ConfigDoProxy) {
 - [ ] **Step 7: Rodar e confirmar que passa**
 
 Run: `cd repos/erp-nucleo && pnpm test`
-Expected: PASS, 23 testes.
+Expected: PASS, 32 testes — 22 das tasks anteriores mais 10 desta.
 
 - [ ] **Step 8: Commit**
 
