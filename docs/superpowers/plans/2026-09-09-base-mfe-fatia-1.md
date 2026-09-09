@@ -938,6 +938,15 @@ test('o fake lanca NaoEncontrado para id ausente', async () => {
   await assert.rejects(() => dados.lerPedido('9999'), NaoEncontrado)
 })
 
+test('o fake nao devolve propriedade herdada para id hostil', async () => {
+  // um lookup por indice devolveria Object.prototype.toString aqui, e o fake passaria
+  // a divergir do adaptador HTTP justamente nos ids que um atacante escolhe
+  const dados = dadosFake({ '8821': PEDIDO })({ obterToken: async () => 'x' })
+  for (const id of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+    await assert.rejects(() => dados.lerPedido(id), NaoEncontrado, `id ${id} vazou`)
+  }
+})
+
 test('o adaptador HTTP envia Bearer e nunca expoe o token no retorno', async () => {
   let autorizacaoVista = null
   const servidor = (await import('node:http')).createServer((req, res) => {
@@ -1028,11 +1037,21 @@ import type { PedidoDTO } from '@erp/contratos'
 import type { FabricaDeDados } from '../portas/dados.js'
 import { NaoEncontrado } from '../interno/erros.js'
 
-/** Sem rede, sem stub. Para testes que não precisam exercitar HTTP. */
+/**
+ * Sem rede, sem stub. Para testes que não precisam exercitar HTTP.
+ *
+ * O `Map` não é preferência de estilo. `pedidos[id]` com `id` vindo da URL devolve
+ * propriedade **herdada** para `__proto__`, `constructor`, `toString` e afins — o fake
+ * devolveria lixo em vez de lançar `NaoEncontrado`, divergindo do adaptador HTTP
+ * exatamente nos ids que um atacante escolheria. Um fake que não se comporta como o
+ * adaptador real destrói o propósito da porta: o teste passa e não prova nada sobre
+ * produção.
+ */
 export function dadosFake(pedidos: Record<string, PedidoDTO>): FabricaDeDados {
+  const porId = new Map(Object.entries(pedidos))
   return () => ({
     async lerPedido(id) {
-      const pedido = pedidos[id]
+      const pedido = porId.get(id)
       if (!pedido) throw new NaoEncontrado()
       return { pedido, versao: `"${pedido.versao}"` }
     },
@@ -1043,7 +1062,7 @@ export function dadosFake(pedidos: Record<string, PedidoDTO>): FabricaDeDados {
 - [ ] **Step 6: Rodar e confirmar que passa**
 
 Run: `cd repos/erp-nucleo && pnpm test`
-Expected: PASS, 16 testes.
+Expected: PASS, 20 testes — 15 das tasks anteriores mais 5 desta.
 
 O quarto teste passa porque `encodeURIComponent('../../admin')` vira `..%2F..%2Fadmin`, que resolve para `/pedidos/..%2F..%2Fadmin` — mesma origem, mas o stub devolverá `404`, e o teste só exige que rejeite.
 
