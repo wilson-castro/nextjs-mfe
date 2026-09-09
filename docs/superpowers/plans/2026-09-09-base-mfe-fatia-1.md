@@ -567,20 +567,26 @@ cd repos/erp-nucleo && git init -q
   },
   "dependencies": { "@erp/contratos": "0.1.0" },
   "peerDependencies": { "next": "^16.0.0", "server-only": "^0.0.1" },
-  "devDependencies": { "typescript": "^5.6.0" },
+  "devDependencies": { "typescript": "^5.6.0", "@types/node": "^24.0.0" },
   "publishConfig": { "registry": "http://localhost:4873" }
 }
 ```
 
-`repos/erp-nucleo/tsconfig.json`:
+`@types/node` é obrigatório: os adaptadores desta task são os primeiros arquivos do pacote
+a importar `node:fs`, `node:path` e `node:crypto`.
+
+`repos/erp-nucleo/tsconfig.json`. `module`/`moduleResolution` **não** são `NodeNext` aqui,
+ao contrário de `erp-contratos`: o Next 16 não publica campo `exports`, e sob ESM um
+subpath sem extensão em pacote sem `exports` não resolve — `next/server` falharia a
+compilação. `preserve` + `bundler` checa os tipos e emite os imports como escritos.
 
 ```json
 {
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023", "DOM"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src",
@@ -1169,7 +1175,7 @@ git add -A && git commit -m "feat: add data port, HTTP adapter and test fakes"
   - `function sessaoArquivo(cfg: { dir: string }): StoreDeSessao`
   - `function identidadeDev(): ProvedorDeIdentidade`
   - `function pode(p: PermissoesPedido, acao: AcaoPedido): boolean`
-  - `function criarNucleo(cfg): Nucleo` onde `Nucleo = { dados: PortaDeDados; sessao: { atual(): Promise<Sessao|null>; exigir(): Promise<Sessao> }; identidade: ProvedorDeIdentidade; store: StoreDeSessao }`
+  - `function criarNucleo(cfg): Nucleo` onde `Nucleo = { dados: PortaDeDados; sessao: { atual(): Promise<Sessao|null>; exigir(): Promise<Sessao>; abrir(id, s): Promise<void>; encerrar(id): Promise<void> }; identidade: ProvedorDeIdentidade }` — **sem `store`**
   - `function criarProxy(cfg: { prefixo: string; rotaLogin: string; nomeDoCookie?: string }): (req: NextRequest) => NextResponse`
 
 **Nota de desenho — por que `sessaoArquivo` e não `sessaoMemoria`:** shell e zona são **dois processos**. Um store em memória no shell é invisível para a zona, e a sessão nunca resolveria. A porta existe exatamente para isso: `sessaoArquivo` é dev-only e some quando `sessaoRedis` entrar na rodada 2, sem tocar em código de aplicação.
@@ -1430,11 +1436,22 @@ export type ConfigDoNucleo = {
   lerCookieDeSessao: () => Promise<string | undefined>
 }
 
+/**
+ * `store` NÃO é exposto. O shell precisa abrir e encerrar sessão, não lê-la: expor o
+ * `StoreDeSessao` inteiro daria a qualquer chamador o `ler()`, que devolve
+ * `SessaoArmazenada` — com o `accessToken` dentro. O teste que prova que
+ * `sessao.atual()` não vaza token continuaria verde enquanto `nucleo.store.ler()`
+ * entregava o token ao lado.
+ */
 export type Nucleo = {
   dados: PortaDeDados
-  sessao: { atual(): Promise<Sessao | null>; exigir(): Promise<Sessao> }
+  sessao: {
+    atual(): Promise<Sessao | null>
+    exigir(): Promise<Sessao>
+    abrir(id: string, s: SessaoArmazenada): Promise<void>
+    encerrar(id: string): Promise<void>
+  }
   identidade: ProvedorDeIdentidade
-  store: StoreDeSessao
 }
 
 export function criarNucleo(cfg: ConfigDoNucleo): Nucleo {
@@ -1456,8 +1473,9 @@ export function criarNucleo(cfg: ConfigDoNucleo): Nucleo {
   return {
     dados: cfg.dados({ obterToken }),
     identidade: cfg.identidade,
-    store: cfg.sessao,
     sessao: {
+      abrir: (id, s) => cfg.sessao.gravar(id, s),
+      encerrar: (id) => cfg.sessao.remover(id),
       async atual() {
         const s = await armazenada()
         // projeta: token e qualquer campo futuro ficam para trás
@@ -1556,8 +1574,18 @@ import { readFileSync } from 'node:fs'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
-test('o pacote publica exatamente tres subpaths', () => {
-  assert.deepEqual(Object.keys(pkg.exports).sort(), ['.', './permissoes', './testing'])
+test('o pacote publica exatamente quatro subpaths', () => {
+  assert.deepEqual(Object.keys(pkg.exports).sort(),
+                   ['.', './permissoes', './proxy', './testing'])
+})
+
+test('a raiz NAO arrasta next/server — senao o pacote nao carrega fora do Next', async () => {
+  // next@16 nao publica campo `exports`, e sob ESM um subpath sem extensao em pacote
+  // sem `exports` nao resolve. Com criarProxy na raiz, este proprio import falharia,
+  // e com ele todo teste deste pacote.
+  await import('../dist/index.js')
+  const raiz = readFileSync(new URL('../dist/index.js', import.meta.url), 'utf8')
+  assert.ok(!raiz.includes('next/server'), 'a raiz importa next/server')
 })
 
 test('interno e adaptadores nao sao alcancaveis de fora', () => {
@@ -1568,7 +1596,7 @@ test('interno e adaptadores nao sao alcancaveis de fora', () => {
 
 test('a raiz exporta as fabricas e os adaptadores nomeados', async () => {
   const m = await import('../dist/index.js')
-  for (const nome of ['criarNucleo', 'criarProxy', 'dadosHttp',
+  for (const nome of ['criarNucleo', 'dadosHttp',
                       'sessaoArquivo', 'identidadeDev', 'ErroDeAplicacao']) {
     assert.equal(typeof m[nome], 'function', `${nome} ausente na raiz`)
   }
@@ -1592,8 +1620,12 @@ Expected: FAIL — `pkg.exports` é `undefined`.
 
 ```ts
 // Superfície pública do núcleo. O que não está aqui não existe para os consumidores.
+//
+// `criarProxy` NÃO entra aqui: ele importa `next/server`, e o Next 16 não publica campo
+// `exports`, então esse import não resolve sob ESM fora de um bundler. Na raiz, ele
+// tornaria o pacote impossível de carregar em Node puro — incluindo nos testes deste
+// próprio pacote. Vive em `@erp/nucleo/proxy`.
 export { criarNucleo, type ConfigDoNucleo, type Nucleo } from './fabricas/criarNucleo.js'
-export { criarProxy, type ConfigDoProxy } from './fabricas/criarProxy.js'
 
 export { dadosHttp } from './adaptadores/dados-http.js'
 export { sessaoArquivo } from './adaptadores/sessao-arquivo.js'
@@ -1618,6 +1650,7 @@ Substitua o bloco de `package.json` de `erp-nucleo` acrescentando, logo após `"
 ```json
   "exports": {
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./proxy": { "types": "./dist/fabricas/criarProxy.d.ts", "default": "./dist/fabricas/criarProxy.js" },
     "./permissoes": { "types": "./dist/permissoes/index.d.ts", "default": "./dist/permissoes/index.js" },
     "./testing": { "types": "./dist/testing/index.d.ts", "default": "./dist/testing/index.js" }
   },
@@ -2356,7 +2389,7 @@ export default config
 `repos/erp-mfe-pedidos/proxy.ts`:
 
 ```ts
-import { criarProxy } from '@erp/nucleo'
+import { criarProxy } from '@erp/nucleo/proxy'
 
 // Uma linha. Sem esta fábrica, cada zona reimplementaria sessão e CSP e
 // divergiria com o tempo — limitação 4.
