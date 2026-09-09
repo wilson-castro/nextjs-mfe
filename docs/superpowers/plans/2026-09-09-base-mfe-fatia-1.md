@@ -968,10 +968,62 @@ test('o adaptador HTTP envia Bearer e nunca expoe o token no retorno', async () 
   servidor.close()
 })
 
-test('o adaptador HTTP recusa id que tenta escapar do caminho', async () => {
-  const dados = dadosHttp({ baseUrl: 'http://127.0.0.1:4000' })({ obterToken: async () => 'x' })
-  // o id vem da URL, portanto do cliente: precisa ser codificado, nunca concatenado cru
-  await assert.rejects(() => dados.lerPedido('../../admin'))
+test('o id do cliente nunca escapa de /pedidos/', async () => {
+  // Um servidor REAL, que registra o caminho recebido. Sem ele o teste passaria por
+  // ECONNREFUSED — inclusive contra uma implementacao deliberadamente vulneravel, que
+  // e como a versao anterior deste teste nao provava nada.
+  const caminhos = []
+  const servidor = (await import('node:http')).createServer((req, res) => {
+    caminhos.push(req.url)
+    res.writeHead(404, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ codigo: 'ERRO_INTERNO' }))
+  })
+  await new Promise((r) => servidor.listen(0, '127.0.0.1', r))
+  const porta = servidor.address().port
+  const dados = dadosHttp({ baseUrl: `http://127.0.0.1:${porta}` })({
+    obterToken: async () => 'x',
+  })
+
+  for (const hostil of ['../../admin', '..%2f..%2fadmin', 'a/../../b', '\\..\\admin']) {
+    await assert.rejects(() => dados.lerPedido(hostil))
+  }
+  for (const visto of caminhos) {
+    assert.ok(visto.startsWith('/pedidos/'), `saiu do namespace: ${visto}`)
+  }
+  servidor.close()
+})
+
+test('id . e .. nao alcancam a rede — a normalizacao de URL os colapsaria', async () => {
+  // encodeURIComponent NAO escapa ponto: '/pedidos/..' normaliza para '/', mesma origem
+  // e fora do namespace. O check de origem nao pega isto, porque a origem nao muda.
+  let alcancou = false
+  const servidor = (await import('node:http')).createServer((req, res) => {
+    alcancou = true
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end('{}')
+  })
+  await new Promise((r) => servidor.listen(0, '127.0.0.1', r))
+  const porta = servidor.address().port
+  const dados = dadosHttp({ baseUrl: `http://127.0.0.1:${porta}` })({
+    obterToken: async () => 'x',
+  })
+
+  for (const id of ['.', '..']) {
+    await assert.rejects(() => dados.lerPedido(id), NaoEncontrado, `id ${id} passou`)
+  }
+  assert.equal(alcancou, false, 'a requisicao nao deveria ter saido')
+  servidor.close()
+})
+
+test('o fake alcanca a forma SEM versao, que o adaptador HTTP produz sem ETag', async () => {
+  const semVersao = dadosFake({ '8821': PEDIDO }, { omitirVersao: true })({
+    obterToken: async () => 'x',
+  })
+  const r = await semVersao.lerPedido('8821')
+  assert.ok(!('versao' in r), 'o fake precisa poder omitir a chave, como o adaptador HTTP')
+
+  const comVersao = dadosFake({ '8821': PEDIDO })({ obterToken: async () => 'x' })
+  assert.equal((await comVersao.lerPedido('8821')).versao, '"42"')
 })
 ```
 
@@ -1015,8 +1067,19 @@ export function dadosHttp(cfg: { baseUrl: string }): FabricaDeDados {
   const base = new URL(cfg.baseUrl)
   return ({ obterToken }): PortaDeDados => ({
     async lerPedido(id) {
-      // `id` vem da URL, portanto do cliente. Codificar é obrigatório:
-      // concatenar permitiria "../../" atravessar o caminho.
+      // `id` vem da URL, portanto do cliente.
+      //
+      // `encodeURIComponent` escapa `/` e `\\`, mas NÃO escapa `.`. Um id `..` produz
+      // `/pedidos/..`, que a normalização de URL colapsa para `/` — mesma origem, e
+      // fora do namespace `/pedidos/`. O elemento 7 protege a ORIGEM; a seleção de
+      // recurso é responsabilidade daqui, e só `.` e `..` exatos disparam a remoção
+      // de dot-segment (`...` e `....//` são inertes).
+      //
+      // `NaoEncontrado`, e não um erro próprio: um id que não nomeia recurso é
+      // indistinguível de um recurso que não existe, e essa uniformidade é o que
+      // impede enumeração.
+      if (id === '.' || id === '..') throw new NaoEncontrado()
+
       const r = await upstream<PedidoDTO>({ base, obterToken },
                                           `/pedidos/${encodeURIComponent(id)}`)
       if (!r.body) throw new NaoEncontrado()
@@ -1047,13 +1110,21 @@ import { NaoEncontrado } from '../interno/erros.js'
  * adaptador real destrói o propósito da porta: o teste passa e não prova nada sobre
  * produção.
  */
-export function dadosFake(pedidos: Record<string, PedidoDTO>): FabricaDeDados {
+export function dadosFake(
+  pedidos: Record<string, PedidoDTO>,
+  opcoes: { omitirVersao?: boolean } = {},
+): FabricaDeDados {
   const porId = new Map(Object.entries(pedidos))
   return () => ({
     async lerPedido(id) {
       const pedido = porId.get(id)
       if (!pedido) throw new NaoEncontrado()
-      return { pedido, versao: `"${pedido.versao}"` }
+      // `omitirVersao` existe porque o adaptador HTTP OMITE a chave quando não há ETag,
+      // e `PedidoDTO.versao` é obrigatório — sem esta opção o fake nunca produziria a
+      // forma sem `versao`, e um teste que ramifica em `'versao' in resultado` não
+      // poderia ser exercitado contra ele. Um fake que não alcança uma das formas do
+      // adaptador real não é intercambiável, que é a única coisa que a porta promete.
+      return opcoes.omitirVersao ? { pedido } : { pedido, versao: `"${pedido.versao}"` }
     },
   })
 }
@@ -1062,7 +1133,7 @@ export function dadosFake(pedidos: Record<string, PedidoDTO>): FabricaDeDados {
 - [ ] **Step 6: Rodar e confirmar que passa**
 
 Run: `cd repos/erp-nucleo && pnpm test`
-Expected: PASS, 20 testes — 15 das tasks anteriores mais 5 desta.
+Expected: PASS, 23 testes — 15 das tasks anteriores mais 8 desta.
 
 O quarto teste passa porque `encodeURIComponent('../../admin')` vira `..%2F..%2Fadmin`, que resolve para `/pedidos/..%2F..%2Fadmin` — mesma origem, mas o stub devolverá `404`, e o teste só exige que rejeite.
 
