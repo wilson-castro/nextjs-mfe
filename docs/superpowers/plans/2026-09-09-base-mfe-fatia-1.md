@@ -639,6 +639,19 @@ test('recusa caminho relativo', () => {
   assert.throws(() => resolverDestino(BASE, 'pedidos/8821'), DestinoInvalido)
 })
 
+test('byte de controle vence os guards de prefixo — so a origem salva', () => {
+  // O parser WHATWG remove TAB, CR e LF do input INTEIRO antes de parsear. '/\t/evil.com'
+  // passa pelos dois guards de prefixo (o segundo caractere nao e / nem \) e so entao
+  // vira '//evil.com'. O unico check que reprova e `url.origin !== base.origin`.
+  //
+  // Este teste existe para que "simplificar" os guards no futuro nao reintroduza o SSRF
+  // com a suite verde.
+  for (const ctrl of ['\t', '\r', '\n']) {
+    assert.throws(() => resolverDestino(BASE, `/${ctrl}/evil.com/x`), DestinoInvalido,
+      `byte de controle ${JSON.stringify(ctrl)} atravessou`)
+  }
+})
+
 test('travessia para cima nao escapa da origem', () => {
   // normaliza para /evil na MESMA origem, o que e aceitavel: continua no dominio
   assert.equal(resolverDestino(BASE, '/pedidos/../evil').origin, BASE.origin)
@@ -686,6 +699,37 @@ test('500 com corpo do framework nao vaza detalhe interno', async () => {
     (e) => e instanceof ErroDeAplicacao
         && e.codigo === 'ERRO_INTERNO'
         && !JSON.stringify({ codigo: e.codigo, supportId: e.supportId }).includes('spring'))
+})
+
+test('codigo desconhecido do upstream vira ERRO_INTERNO', async () => {
+  // o unico teste do ramo !res.ok nao enviava `codigo`, entao a rejeicao de codigo
+  // desconhecido nunca era exercitada — o gate funcionava sem nenhuma protecao de regressao
+  for (const codigo of ['ADMIN_OVERRIDE', 'DESTINO_INVALIDO', 42, null, { a: 1 }]) {
+    await assert.rejects(
+      () => normalizar(resposta(500, { codigo })),
+      (e) => e instanceof ErroDeAplicacao && e.codigo === 'ERRO_INTERNO',
+      `codigo ${JSON.stringify(codigo)} nao deveria atravessar`)
+  }
+})
+
+test('supportId hostil e DESCARTADO, nao repassado nem truncado', async () => {
+  // supportId e o outro campo que atravessa a fronteira. Sem validacao, o dominio poe
+  // aqui o stacktrace que o `codigo` impediu de passar.
+  const stacktrace = 'org.springframework.NullPointerException at java.base/Foo.bar(Foo.java:42)'
+  await assert.rejects(
+    () => normalizar(resposta(500, { supportId: stacktrace })),
+    (e) => e.supportId === undefined)
+
+  for (const hostil of [{ nested: 'x' }, 12345, ['a'], 'a'.repeat(65), 'com espaco', '']) {
+    await assert.rejects(
+      () => normalizar(resposta(500, { supportId: hostil })),
+      (e) => e.supportId === undefined, `supportId ${JSON.stringify(hostil)} atravessou`)
+  }
+
+  // um id opaco legitimo passa
+  await assert.rejects(
+    () => normalizar(resposta(409, { supportId: 'a1b2-c3d4' })),
+    (e) => e instanceof Desatualizado && e.supportId === 'a1b2-c3d4')
 })
 
 test('200 devolve corpo e ETag como versao', async () => {
@@ -745,19 +789,33 @@ export class NaoEncontrado extends ErroDeAplicacao {
 
 export type Resposta<T> = { status: number; versao?: string; body?: T }
 
+/**
+ * `supportId` é o SEGUNDO campo que atravessa a fronteira de erro, e o único sem lista
+ * fechada. Sem esta validação ele é um canal aberto: o domínio põe ali o stacktrace que
+ * o `codigo` impediu de passar, e o teste que prova que `message` não vaza continua verde.
+ *
+ * Um identificador de suporte é opaco e curto. Qualquer coisa que não seja isso é
+ * descartada, não truncada — truncar entregaria os primeiros 64 caracteres do stacktrace.
+ */
+function sanitizarSupportId(v: unknown): string | undefined {
+  return typeof v === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : undefined
+}
+
 /** Um lugar só decide o que cada status significa. Nada do corpo do domínio atravessa. */
 export async function normalizar<T>(res: Response): Promise<Resposta<T>> {
   if (res.status === 401) throw new SessaoInvalida()
   if (res.status === 404) throw new NaoEncontrado()
   if (res.status === 403) throw new ErroDeAplicacao('OPERACAO_NAO_PERMITIDA')
   if (!res.ok) {
-    const b = (await res.json().catch(() => ({}))) as { codigo?: CodigoErro; supportId?: string }
-    if (res.status === 409) throw new Desatualizado(b.supportId)
-    // `codigo` só é aceito se for um código conhecido; qualquer outra coisa vira ERRO_INTERNO
+    const b = (await res.json().catch(() => ({}))) as { codigo?: unknown; supportId?: unknown }
+    const supportId = sanitizarSupportId(b.supportId)
+    if (res.status === 409) throw new Desatualizado(supportId)
+    // `DESTINO_INVALIDO` está FORA desta lista de propósito: é código interno do BFF,
+    // e o domínio não pode alegar um erro de uma camada que não é a dele.
     const conhecidos: CodigoErro[] = ['REGISTRO_DESATUALIZADO', 'OPERACAO_NAO_PERMITIDA',
-                                      'SESSAO_EXPIRADA', 'DESTINO_INVALIDO', 'ERRO_INTERNO']
-    const codigo = b.codigo && conhecidos.includes(b.codigo) ? b.codigo : 'ERRO_INTERNO'
-    throw new ErroDeAplicacao(codigo, b.supportId)
+                                      'SESSAO_EXPIRADA', 'ERRO_INTERNO']
+    const codigo = conhecidos.includes(b.codigo as CodigoErro) ? (b.codigo as CodigoErro) : 'ERRO_INTERNO'
+    throw new ErroDeAplicacao(codigo, supportId)
   }
   const etag = res.headers.get('etag')
   const body = (await res.json().catch(() => undefined)) as T | undefined
