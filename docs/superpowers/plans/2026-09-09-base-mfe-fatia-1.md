@@ -277,8 +277,9 @@ import assert from 'node:assert/strict'
 import { ACOES_PEDIDO, MENSAGENS } from '../dist/index.js'
 
 test('ACOES_PEDIDO cobre exatamente as chaves de PermissoesPedido', () => {
-  // Um Record completo tem uma chave por ação. Se alguém adicionar uma ação
-  // ao tipo sem adicionar aqui, este teste é o que pega.
+  // `AcaoPedido` deriva de ACOES_PEDIDO, então o compilador já garante que o tipo
+  // acompanha a constante. Este teste guarda o outro lado: que este literal de
+  // exemplo, usado pelos testes de tipo, não fique para trás da constante.
   const permissoesDeExemplo = {
     editar: false, remover_remessa: false, excluir: false, aprovar: false,
   }
@@ -315,10 +316,16 @@ Expected: FAIL — `Cannot find module '../dist/index.js'`, porque `src/` ainda 
 ```ts
 export type StatusPedido = 'RASCUNHO' | 'ABERTO' | 'EM_RISCO' | 'FATURADO'
 
-export type AcaoPedido = 'editar' | 'remover_remessa' | 'excluir' | 'aprovar'
-
-/** Fonte única da lista de ações. `PermissoesPedido` deriva dela. */
+/** Fonte única da lista de ações. Tudo abaixo deriva desta constante. */
 export const ACOES_PEDIDO = ['editar', 'remover_remessa', 'excluir', 'aprovar'] as const
+
+/**
+ * Derivado da constante, não declarado ao lado dela. Duas listas escritas à mão
+ * divergem: adicionar uma ação ao tipo e esquecer a constante não quebraria nada,
+ * e uma enumeração desatualizada esconde uma ação da interface pelo mesmo mecanismo
+ * silencioso que um `Partial` esconde uma permissão.
+ */
+export type AcaoPedido = (typeof ACOES_PEDIDO)[number]
 
 /**
  * Record COMPLETO, nunca Partial. Ver 06-seguranca.md §9.3: um Partial permite
@@ -391,12 +398,86 @@ export * from './pedido.js'
 export * from './erros.js'
 ```
 
-- [ ] **Step 5: Rodar o teste e confirmar que passa**
+- [ ] **Step 5: Escrever o teste de tipo, que é o único capaz de reprovar**
+
+Este pacote é quase só declaração de tipo, e tipo some em runtime — um teste `.mjs` não
+consegue reprovar uma violação de contrato de tipo. Este arquivo consegue: cada
+`@ts-expect-error` **quebra a compilação** se o erro que ele espera não acontecer.
+
+`repos/erp-contratos/test/tipos.test-d.ts`:
+
+```ts
+import { ACOES_PEDIDO } from '../src/index.js'
+import type { PedidoDTO, PermissoesPedido, AcaoPedido } from '../src/index.js'
+
+const base = {
+  id: '8821', status: 'ABERTO', versao: 42,
+  fornecedor: { id: 'f1', nome: 'Fornecedor Um' },
+  itens: [], remessas: [],
+  _permissoes: { editar: false, remover_remessa: false, excluir: false, aprovar: false },
+} satisfies Omit<PedidoDTO, 'condicaoComercial'>
+
+/** Omitir é a única forma válida de não ter o bloco. */
+export const semBloco: PedidoDTO = base
+
+// @ts-expect-error `undefined` explícito quebra a ausência total (exactOptionalPropertyTypes)
+export const comUndefined: PedidoDTO = { ...base, condicaoComercial: undefined }
+
+// @ts-expect-error `null` é placeholder, e placeholder já informa que o bloco existe
+export const comNull: PedidoDTO = { ...base, condicaoComercial: null }
+
+// @ts-expect-error Record completo: faltar uma chave não compila
+export const permissoesIncompletas: PermissoesPedido = { editar: true }
+
+// @ts-expect-error string arbitrária não é ação
+export const acaoInventada: AcaoPedido = 'cancelar'
+
+/** A derivação é real: se AcaoPedido deixar de derivar da constante, isto para de compilar. */
+export const derivacaoEhReal: readonly AcaoPedido[] = ACOES_PEDIDO
+export const cobreTodaAcao: Record<(typeof ACOES_PEDIDO)[number], boolean> =
+  {} as PermissoesPedido
+```
+
+`repos/erp-contratos/tsconfig.tipos.json`:
+
+```json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src", "test/tipos.test-d.ts"]
+}
+```
+
+Em `package.json`, o script `test` passa a rodar os dois:
+
+```json
+    "test": "pnpm build && tsc -p tsconfig.tipos.json && node --test test/*.test.mjs",
+```
+
+- [ ] **Step 6: Provar que o teste de tipo reprova de verdade**
+
+Um `@ts-expect-error` que nunca viu o erro que espera é pior que nenhum teste: ele
+**silencia** um erro real. Confirme que cada um está guardando algo:
+
+Run:
+```bash
+cd repos/erp-contratos
+# remove a flag que sustenta a ausência total: o @ts-expect-error de `undefined`
+# fica sem erro para esperar, e o tsc reprova a diretiva não usada
+sed -i 's/"exactOptionalPropertyTypes": true/"exactOptionalPropertyTypes": false/' tsconfig.json
+pnpm exec tsc -p tsconfig.tipos.json; echo "codigo de saida: $?"
+sed -i 's/"exactOptionalPropertyTypes": false/"exactOptionalPropertyTypes": true/' tsconfig.json
+pnpm exec tsc -p tsconfig.tipos.json; echo "codigo de saida: $?"
+```
+Expected: primeiro `error TS2578: Unused '@ts-expect-error' directive.` e `codigo de saida: 2`;
+depois `codigo de saida: 0`.
+
+- [ ] **Step 7: Rodar tudo e confirmar que passa**
 
 Run: `cd repos/erp-contratos && pnpm test`
-Expected: PASS, 3 testes.
+Expected: `tsc` silencioso, depois PASS nos 3 testes de runtime.
 
-- [ ] **Step 6: Publicar no Verdaccio**
+- [ ] **Step 8: Publicar no Verdaccio**
 
 Run:
 ```bash
@@ -409,7 +490,7 @@ Expected: imprime metadados do pacote e `PUBLICADO_OK`.
 
 Se o Verdaccio pedir autenticação, rode `pnpm dlx npm-cli-login -u dev -p dev -e dev@local -r http://localhost:4873` — o config já concede `publish: $all`, então normalmente não é necessário.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 cd repos/erp-contratos
