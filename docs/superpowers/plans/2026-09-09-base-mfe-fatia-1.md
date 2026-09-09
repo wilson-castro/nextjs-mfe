@@ -24,6 +24,10 @@
 - **Pedido do caso:** `8821`. `carla` recebe `404`.
 - **Ausência total, sem placeholder:** `condicaoComercial` **ausente** do objeto quando não autorizado. Nunca `null`, nunca `undefined` explícito, nunca `{}`.
 - **`_permissoes` é `Record` completo, nunca `Partial`.**
+- **`exactOptionalPropertyTypes: true` em TODO `tsconfig.json`**, dos pacotes e das apps.
+  A ausência de `condicaoComercial` é garantida pelo tsconfig de quem **consome**, não pelo
+  `.d.ts` publicado: sem essa flag, um consumidor pode atribuir `condicaoComercial: undefined`
+  sem erro de compilação e derrubar o contrato de ausência que o elemento 2 depende.
 - Toda pasta `interno/` e todo adaptador começam com `import 'server-only'`. Exceção única: `permissoes/`.
 
 ---
@@ -1775,7 +1779,8 @@ cd repos/erp-shell && git init -q
   "compilerOptions": {
     "target": "ES2023", "lib": ["ES2023", "DOM"], "jsx": "preserve",
     "module": "ESNext", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "strict": true, "exactOptionalPropertyTypes": true,
+    "noEmit": true, "skipLibCheck": true,
     "plugins": [{ "name": "next" }],
     "paths": { "@/*": ["./*"] }
   },
@@ -2016,7 +2021,8 @@ cd repos/erp-mfe-pedidos && git init -q
   "compilerOptions": {
     "target": "ES2023", "lib": ["ES2023", "DOM"], "jsx": "preserve",
     "module": "ESNext", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "strict": true, "exactOptionalPropertyTypes": true,
+    "noEmit": true, "skipLibCheck": true,
     "plugins": [{ "name": "next" }],
     "paths": { "@/*": ["./*"] }
   },
