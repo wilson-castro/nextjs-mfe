@@ -134,7 +134,14 @@ export async function alternarStatus(id: string, versao: number) {
 
 O `<form action={acao}>` funciona **sem JavaScript**: o navegador faz um POST nativo.
 
-### Caso 3 — O navegador busca sozinho, após a montagem → `app/api/bff/`
+### Caso 3 — O navegador busca sozinho, após a montagem → `app/{zona}/api/bff/`
+
+> **Correção (2026-09-09).** O caminho era `app/api/bff/`. Sob Multi-Zones cada zona é
+> uma aplicação Next separada e precisa de prefixo de rota exclusivo; duas zonas servindo
+> `/api/bff/*` colidem no gateway. O prefixo da zona passa a ser obrigatório —
+> `app/pedidos/api/bff/`, `app/estoque/api/bff/`. Mudança de convenção, não de
+> configuração. Ver [ADR-0008](docs/adr/0008-multi-zones-como-base-mfe.md) e
+> `../mfe/limitações-mfe-multizone.md` item 5.
 
 O teste que decide: **a busca acontece sem navegação?** Se um clique em link ou uma
 mudança de `searchParams` resolveria, o caso é 1.
@@ -195,7 +202,7 @@ pública. Não expõe dado; não deve virar precedente.
 |---|---|---|---|
 | Renderização no servidor | leitura | DAL, do Server Component | já resolvida pelo render |
 | Ação do usuário na tela | escrita | Server Action | revalidada no corpo da action |
-| Código no navegador, após a montagem | leitura | `app/api/bff/` | cookie enviado pelo `fetch` |
+| Código no navegador, após a montagem | leitura | `app/{zona}/api/bff/` | cookie enviado pelo `fetch` |
 | Fora da aplicação | qualquer | **não no BFF** — leve ao domínio | — |
 
 **Escrita sempre por Server Action; leitura pela DAL se o servidor renderiza, por Route

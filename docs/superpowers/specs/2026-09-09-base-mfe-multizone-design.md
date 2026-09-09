@@ -36,6 +36,9 @@ estruturalmente menos seguro. A escolha é **Multi-Zones + App Router**.
 
 ## 2. Decisões desta rodada
 
+Registradas formalmente em [ADR-0008](../../design-bff/comum/docs/adr/0008-multi-zones-como-base-mfe.md)
+e indexadas em `05-decisoes.md`. A tabela abaixo é o resumo.
+
 | Decisão | Escolha | Razão |
 |---|---|---|
 | Distribuição | multi-repo desde o commit 1 | times e ciclos de deploy separados; restrição organizacional, não preferência |
@@ -198,9 +201,10 @@ Duas consequências de configuração que são fáceis de errar:
 
 - **Exceções de rewrite** (limitação 6): `/api/stream`, `/api/auth/*` e `/api/otel/*` não
   seguem a regra de prefixo por zona. São sempre do shell.
-- **Rotas de API da zona** (limitação 5): vivem em `/pedidos/api/*`, nunca em `/api/*`,
-  porque duas zonas colidiriam. Isso **contradiz a convenção `app/api/bff/` registrada no
-  `AGENTS.md`**, que precisa ser corrigida como parte desta rodada.
+- **Rotas de API da zona** (limitação 5): vivem em `app/{zona}/api/bff/`, nunca em
+  `app/api/bff/`, porque duas zonas colidiriam. O `AGENTS.md` **já foi corrigido**, com a
+  justificativa registrada no próprio ponto da convenção e em `04-servicos.md` e
+  `00-caso.md`. Convenção antiga em código é erro de revisão, não estilo.
 
 ### 5.1 Erros
 
@@ -254,16 +258,18 @@ deploy atômico que o multi-repo descartou.
 Extensões, por definição: `erp-ui`, SSE, cache de cliente, telemetria de navegador,
 atualização otimista, CSP com nonce além do que `criarProxy` já injeta.
 
-**Dois elementos de núcleo também ficam para a rodada 2**, e isso precisa ser lido com
-cuidado:
+**Dois elementos de núcleo também ficam para a rodada 2.** Decisão confirmada, registrada
+como ADR-0008 §9:
 
 | # | Elemento | Consequência |
 |---|---|---|
 | 4 | mutação por Server Action com `If-Match` | a fatia 1 é **somente leitura** |
 | 8 | trace contínuo sem dado pessoal | sem correlação ponta a ponta |
 
-Ausência temporária não é opcionalidade. A base **não está pronta para escrita** até a
-rodada 2 fechar, e nenhum documento pode descrever esses dois como extensões.
+Ausência temporária não é opcionalidade. A base **não aceita escrita** até a rodada 2
+fechar: nenhuma zona expõe Server Action de mutação, nenhum documento descreve esses dois
+elementos como extensões, e o revisor de arquitetura reprova qualquer PR que introduza
+escrita antes disso. É a mesma armadilha registrada em C-011 e ADR-0007.
 
 ---
 
@@ -278,3 +284,21 @@ A rodada 1 fecha quando, com Verdaccio, stub, shell e zona no ar:
 5. `verificar-lockstep.mjs` passa em ambos os consumidores
 6. trocar `API_BASE_URL` do stub para `mira-backend` não exige mudança em nenhum arquivo
    de `erp-mfe-pedidos` fora de variável de ambiente
+
+---
+
+## 10. Agentes de projeto
+
+Três subagentes em `.claude/agents/`, cada um cobrindo um ponto onde este desenho é fácil
+de furar sem que ninguém perceba:
+
+| Agente | Quando | Autoridade |
+|---|---|---|
+| `arquiteto-mfe` | antes de escrever qualquer peça nova | aplica o teste núcleo/extensão, decide a camada, **recusa porta sem variação conhecida** |
+| `revisor-mfe` | ao terminar tarefa, antes de commit ou merge | reprova vazamento, fronteira rompida, autoridade no lugar errado, restrição de zona violada e escrita na rodada 1 |
+| `testes-invariantes` | ao implementar núcleo, porta, adaptador ou zona | mapeia a mudança para as sete verificações da §6, escreve as que faltam, confirma que cada uma falha pela razão certa antes de passar |
+
+Nenhum dos três escreve código de aplicação. O arquiteto não implementa; o revisor não
+corrige; o de testes escreve teste, não produção. A separação existe para que a revisão
+não seja feita por quem tomou a decisão que está sendo revisada.
+

@@ -65,7 +65,7 @@ interatividade.
 | cabeçalho, itens e estado derivado | DAL durante a renderização | Server Components | sem cache no BFF; dedup por renderização |
 | remessas e lotes | DAL durante a renderização | Server Components; ilha apenas quando necessária | sem cache no BFF |
 | condição comercial | DAL opcional | Server Component | `private`, `no-store`; ausência vira `null` |
-| timeline paginada | `/api/bff/` após a montagem | ilha client | React Query; paginação incremental |
+| timeline paginada | `/{zona}/api/bff/` após a montagem | ilha client | React Query; paginação incremental |
 | ações | payload do pedido + Server Actions | interface client | `_permissoes` para UX; domínio decide de novo |
 | atualização em tempo real | `/api/stream` | `StreamProvider` | uma conexão SSE por aba |
 
@@ -176,7 +176,7 @@ usuário altera estado
 Client Component → Server Action → upstream → Domínio
 
 navegador busca após a montagem
-Client Component → /api/bff/* → upstream → Domínio
+Client Component → /{zona}/api/bff/* → upstream → Domínio
 ```
 
 O servidor Next.js não chama seus próprios Route Handlers para obter dados de renderização.

@@ -27,6 +27,7 @@ que supersede o antigo — não edite o original.
 | [0005](adr/0005-tanstack-query-com-escopo-limitado.md) | TanStack Query apenas nas ilhas, não na aplicação toda | aceita, com correção de API |
 | [0006](adr/0006-csp-nonce-vs-estatico.md) | CSP: nonce na zona autenticada, hash na zona pública | aceita |
 | [0007](adr/0007-remover-cache-de-payload.md) | **Remover o cache de payload do BFF** | aceita |
+| [0008](adr/0008-multi-zones-como-base-mfe.md) | **Multi-Zones como base MFE, em multi-repo** | aceita; fatia 1 **somente leitura** (núcleo 4 e 8 na rodada 2) |
 
 Comparação lado a lado das duas variantes, com código completo:
 [14 — Variantes X e Y](14-variantes-de-cache.md).

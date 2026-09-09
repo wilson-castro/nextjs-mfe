@@ -301,7 +301,7 @@ Nenhuma delas recebe DTO sensível. Ver invariante 2 em `AGENTS.md`.
 | `/dashboard` | dinâmica, role restrita | sim | nenhum | sim |
 | `/configuracoes/[aba]` | dinâmica | sim | — | `sessao.revalidar` |
 | `/api/stream` | handler, streaming | sim | — | — |
-| `/api/bff/*` | handler | sim | `private` | — |
+| `/{zona}/api/bff/*` | handler | sim | `private` | — |
 | `/api/otel/v1/traces` | handler | sim | — | — |
 
 **Vocabulário:**

@@ -10,3 +10,6 @@ build
 multi-zone-poc
 .worktrees
 .docs
+
+# repositórios da base MFE, cada um com .git próprio
+repos/
