@@ -157,7 +157,14 @@ A arquitetura MFE muda **como** três deles são entregues:
 
 Três portas, e só três — aquelas cuja variação já existe. A regra de dependência
 (`interno/` não alcança `adaptadores/`; nada de fora alcança `interno/`) é verificada por
-lint, não por convenção, e os `exports` do pacote publicam exatamente três subpaths.
+lint, não por convenção.
+
+Os `exports` publicam **quatro** subpaths: a raiz, `permissoes` (isomórfico), `testing` e
+`proxy`. O último é separado por necessidade: `criarProxy` importa `next/server`, o Next 16
+não publica campo `exports`, e sob ESM esse import não resolve fora de um bundler — na
+raiz, tornaria o pacote impossível de carregar em Node puro. A regra geral que isso produz:
+**a peça que depende do runtime do framework fica isolada num subpath, porque o núcleo
+precisa ser carregável sem o framework para ser testável sem ele.**
 
 **Por que fábricas e não helpers.** `proxy.ts` não atravessa zonas. Sem
 `criarProxy(config)`, cada uma das três zonas reimplementaria checagem de sessão e CSP, e

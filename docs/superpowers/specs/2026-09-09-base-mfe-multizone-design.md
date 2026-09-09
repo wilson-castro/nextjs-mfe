@@ -137,13 +137,20 @@ Verificada por lint de fronteira, não por convenção. Convenção diverge; lin
 
 ### 4.2 Exports
 
-O `package.json` publica exatamente três subpaths:
+O `package.json` publica exatamente quatro subpaths:
 
 | Subpath | Conteúdo | Ambiente |
 |---|---|---|
 | `@erp/nucleo` | fábricas, fábricas de adaptador, tipos, classes de erro | servidor |
+| `@erp/nucleo/proxy` | `criarProxy` | runtime do Next |
 | `@erp/nucleo/permissoes` | `pode()` | isomórfico |
 | `@erp/nucleo/testing` | adaptadores fake | teste |
+
+**`criarProxy` tem subpath próprio por necessidade, não por gosto.** O Next 16 não publica
+campo `exports`, e sob ESM um subpath sem extensão em pacote sem `exports` não resolve —
+na compilação **e** em runtime. Na raiz, ele faria `import('@erp/nucleo')` arrastar
+`next/server` e tornaria o pacote impossível de carregar em Node puro, incluindo nos
+próprios testes dele. Descoberto na implementação, não no desenho.
 
 Os adaptadores são expostos apenas como fábricas nomeadas reexportadas pela raiz —
 `dadosHttp`, `sessaoArquivo`, `identidadeDev` na rodada 1; `sessaoRedis` e `oidc` na rodada 2.
