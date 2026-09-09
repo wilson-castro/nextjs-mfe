@@ -15,9 +15,11 @@ acontece quando são **várias**, cada uma com time e ciclo de deploy próprios.
 O caso é o de [`00-caso.md`](../comum/docs/00-caso.md): pedido de compra `8821`, quatro
 atores, um bloco sensível com ACL própria. Ele não é ilustração — é o critério de aceite.
 
-> **Segunda metade.** Roteamento concreto, ambientes, sessão ponta a ponta, navegação,
-> falha, testes e deploy estão em [`01-operacao.md`](01-operacao.md). Este documento
-> responde *como a solução é feita*; aquele, *como ela roda*.
+> **O desenho tem três partes.** Este responde *como a solução é feita*.
+> [`01-operacao.md`](01-operacao.md) responde *como ela roda*: roteamento, ambientes,
+> sessão ponta a ponta, navegação, falha, testes e deploy. [`02-zonas.md`](02-zonas.md)
+> responde *o que cada time precisa saber*: estrutura de uma zona, o contrato do
+> fragmento, propriedade e como criar uma zona nova.
 
 > **O que este documento não refaz.** Camadas, núcleo, extensões, segurança e
 > observabilidade estão definidos em `../comum/`. Aqui só aparece o que **muda** por haver
