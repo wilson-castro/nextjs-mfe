@@ -49,6 +49,9 @@ que você mesmo subiu.
 | Caminhos `//evil.com`, `../`, origin divergente | allowlist outbound, elemento 7 | `DestinoInvalido` em todos |
 | Fuzzing de erro | critério 5: nada de framework vaza | ausência de `org.springframework`, `at java.`, `SELECT`, `X-Powered-By`, stacktrace |
 | Varredura de HTML e de todo JS servido | invariante 1 | ausência de `access_token`, `refresh_token`, `groups` |
+| Sessão de `gabrigas` em `/pedidos/8821` | C1 e resultado observável 1 de `00-caso.md` | nenhum campo de `CondicaoComercial` no HTML, no flight payload, em prop serializada ou em `data-*` |
+| Sessão de `rafael` (`ADMIN`) na mesma rota | role não concede grupo | idem — `ADMIN` não vê o bloco comercial |
+| `404` de `carla` × `404` de id inexistente | enumeração mascarada por `404` uniforme | corpo, headers **e** distribuição de tempo indistinguíveis |
 | Mutação por `curl`, sem `If-Match` e sem origem válida | CSRF e concorrência | recusa — **e, na rodada 1, a rota não deve existir** |
 
 Achado adversário é **binário e bloqueante**. Nunca o misture com número de desempenho,
@@ -95,7 +98,7 @@ Você opera sob restrição estrita, e ela não é negociável por conveniência
 - Somente `localhost` e somente processos **que você mesmo iniciou**
 - Nunca derrube processo que já estava rodando, nunca toque em outro projeto da máquina
 - Nunca aponte carga ou sonda adversária para host remoto, ambiente compartilhado ou
-  `mira-backend` sem autorização explícita e por escrito no pedido
+  domínio de produção sem autorização explícita e por escrito no pedido
 - Antes de qualquer coisa destrutiva, diga o que vai derrubar e como restaura
 
 Se o cenário exigir sair desse raio, **pare e peça** — não aproxime com um alvo menor sem

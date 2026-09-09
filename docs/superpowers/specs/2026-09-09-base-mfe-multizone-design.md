@@ -44,7 +44,7 @@ e indexadas em `05-decisoes.md`. A tabela abaixo é o resumo.
 | Distribuição | multi-repo desde o commit 1 | times e ciclos de deploy separados; restrição organizacional, não preferência |
 | Registry | Verdaccio local | encanamento de publicação isolado atrás de `.npmrc`; troca para registry real não toca aplicação |
 | Superfície do núcleo | fábricas configuradas + 3 portas | portas onde a variação já é conhecida; nas demais peças, código concreto |
-| Domínio da fatia 1 | stub HTTP dedicado | fecha a fatia sem depender de subir a JVM; a porta permite apontar para `mira-backend` depois |
+| Domínio da fatia 1 | stub HTTP servindo o caso de `00-caso.md` | o caso já define recursos, atores e projeção esperada; a porta permite apontar para o domínio Spring Boot real depois |
 | Localização em disco | `nextjs-mfe/repos/*` | um diretório só durante o desenvolvimento; cada repo com `.git` próprio |
 
 ### 2.1 O custo aceito do multi-repo
@@ -64,7 +64,7 @@ Portas existem, portanto, apenas nas fronteiras onde a variação já existe hoj
 
 | Fronteira | Variação conhecida | Porta? |
 |---|---|---|
-| Dados de domínio | stub agora, `mira-backend` depois | sim |
+| Dados de domínio | stub do caso agora, domínio Spring Boot depois | sim |
 | Store de sessão | memória em dev, Redis em prod (ADR-0002) | sim |
 | Provedor de identidade | OIDC trocável por ambiente | sim |
 | `upstream/` | é o adaptador; nada a abstrair atrás dele | não |
@@ -171,7 +171,7 @@ import { nucleo } from './lib/nucleo'
 export default criarProxy(nucleo, { prefixo: '/pedidos' })
 ```
 
-Trocar o stub pelo `mira-backend` é trocar `baseUrl`. Trocar Redis por memória é trocar um
+Trocar o stub pelo domínio Spring Boot real é trocar `baseUrl`. Trocar Redis por memória é trocar um
 adaptador. Adicionar uma zona é copiar essas duas linhas. Nenhuma dessas mudanças toca em
 código de aplicação — é o que "genérico e extensível" significa neste desenho.
 
@@ -206,7 +206,49 @@ Duas consequências de configuração que são fáceis de errar:
   justificativa registrada no próprio ponto da convenção e em `04-servicos.md` e
   `00-caso.md`. Convenção antiga em código é erro de revisão, não estilo.
 
-### 5.1 Erros
+### 5.1 O que a fatia 1 renderiza: o cenário C1
+
+O alvo funcional é o caso de [`00-caso.md`](../../design-bff/comum/docs/00-caso.md) — um
+ERP de compras — e a tela é `/pedidos/8821`. Dos nove cenários do caso, a fatia 1 cobre os
+que são **somente leitura**:
+
+| Cenário | Na fatia 1? | Por quê |
+|---|---|---|
+| **C1** — mesma rota, payloads diferentes | **sim** | é a prova da projeção no domínio e da ausência de mascaramento no BFF |
+| **C3** — estado derivado e capacidades vêm do domínio | **parcial** | a leitura de `_permissoes` entra; a revalidação por evento é extensão |
+| **C7** — acesso revogado durante a sessão | **sim** | duas leituras e um `404` neutro; não exige escrita |
+| C2, C6 | não | dependem de SSE, que é extensão |
+| C4, C5, C8, C9 | não | dependem de mutação — núcleo 4, rodada 2 |
+
+**C1 é a fatia.** Ele exercita, numa tela só, os cinco invariantes que a rodada 1 prova, e
+os quatro atores do caso dão a ele quatro resultados observáveis distintos:
+
+| Ator | Grupos | `/pedidos/8821` deve devolver |
+|---|---|---|
+| `gabrigas` | `OPS-NORDESTE` | conteúdo operacional, **sem nenhum campo de `CondicaoComercial`** |
+| `marina` | `OPS-NORDESTE`, `COMERCIAL-NORDESTE` | conteúdo operacional **e** a condição comercial |
+| `rafael` | `OPS-NORDESTE`, role `ADMIN` | conteúdo operacional; role não concede o bloco comercial |
+| `carla` | `OPS-SUL` | `404` — e o `404` não revela que o pedido existe |
+
+`rafael` é o ator mais importante do conjunto e o mais fácil de errar: ele prova que
+**role não é grupo**. Um desenho que confunde os dois entrega o bloco sensível ao admin.
+
+### 5.2 O que o `erp-dominio-stub` precisa servir
+
+O stub não é um mock de conveniência: ele é quem torna C1 falsificável. Precisa implementar,
+no mínimo:
+
+- `GET /pedidos/8821` com **projeção por ator** — o bloco `CondicaoComercial` ausente do
+  corpo, não presente e vazio (§3.2 de `06-seguranca.md`: ausência total, sem placeholder)
+- `404` para `carla`, idêntico em corpo e headers ao `404` de um id inexistente
+- `_permissoes` como `Record` completo, nunca `Partial`, com valores booleanos
+- `ETag` na resposta, ainda que a fatia 1 não escreva — é o insumo do `If-Match` da rodada 2
+- recusa de requisição sem `Authorization`, sem descrever o motivo
+
+A projeção acontece **no stub**, nunca no BFF. Se o BFF precisasse filtrar, o campo teria
+existido em memória no processo errado.
+
+### 5.3 Erros
 
 `interno/erros` normaliza num lugar só: `401` dispara renovação de sessão, `403` vira
 `OPERACAO_NAO_PERMITIDA`, `404` vira `notFound()`, `409` vira `Desatualizado`, e qualquer
@@ -224,8 +266,8 @@ provada quando estes testes passam.
 
 | # | Invariante | Verificação |
 |---|---|---|
-| 1 | credencial nunca no navegador | varre HTML e todo JS servido em `/pedidos/*` por `access_token`, `refresh_token`, `groups` |
-| 2 | DTO sensível não vira prop de ilha | inspeciona o payload RSC renderizado; lint proíbe DTO em props de `'use client'` |
+| 1 | credencial nunca no navegador | varre HTML e todo JS servido em `/pedidos/8821` por `access_token`, `refresh_token`, `groups` — para os quatro atores |
+| 2 | DTO sensível não vira prop de ilha | como `gabrigas`, nenhum campo de `CondicaoComercial` no HTML, no flight payload, em prop serializada ou em atributo `data-*`; lint proíbe DTO em props de `'use client'` |
 | 3 | composição no servidor | o stub escuta só em `127.0.0.1` e exige um cabeçalho de dev que apenas o adaptador injeta; requisição partindo do navegador recebe `403` |
 | 6 | `server-only` é fronteira de build | importar adaptador de dentro de `'use client'` **falha o build** |
 | 7 | allowlist outbound | `//evil.com`, `../`, origin divergente → `DestinoInvalido` |
@@ -235,8 +277,15 @@ Mais dois testes estruturais, que são o que sustenta a extensibilidade:
 - **lint de fronteira** entre `portas/`, `adaptadores/`, `fabricas/` e `interno/`
 - **teste de exports**: `import '@erp/nucleo/interno/upstream'` deve quebrar
 
-Testes que usam `@erp/nucleo/testing` rodam sem rede e sem stub. Os cinco da tabela exigem
-o stub no ar.
+Mais os três do caso, que são o resultado observável 1 de `00-caso.md` §6:
+
+- `gabrigas` e `marina` na **mesma rota** recebem payloads diferentes, e o de `gabrigas`
+  não contém o bloco sensível em nenhuma camada de serialização
+- `rafael`, apesar de `ADMIN`, também não o contém
+- `carla` recebe `404` indistinguível do `404` de um id que nunca existiu
+
+Testes que usam `@erp/nucleo/testing` rodam sem rede e sem stub. Os demais exigem o stub
+no ar, com as quatro sessões.
 
 ---
 
@@ -279,11 +328,13 @@ A rodada 1 fecha quando, com Verdaccio, stub, shell e zona no ar:
 
 1. `@erp/contratos` e `@erp/nucleo` estão publicados e instalados a partir do registry
 2. um usuário não autenticado em `/pedidos/8821` é redirecionado para `/login` pelo shell
-3. autenticado, a mesma URL renderiza o pedido com dados vindos do stub
-4. os cinco testes de invariante e os dois estruturais passam
-5. `verificar-lockstep.mjs` passa em ambos os consumidores
-6. trocar `API_BASE_URL` do stub para `mira-backend` não exige mudança em nenhum arquivo
-   de `erp-mfe-pedidos` fora de variável de ambiente
+3. **C1 passa**: as quatro sessões do caso abrem `/pedidos/8821` e recebem exatamente os
+   quatro resultados da tabela em §5.1 — incluindo `rafael` sem o bloco comercial
+4. **C7 passa**: revogado o grupo de `gabrigas`, a próxima leitura devolve `404` neutro
+5. os cinco testes de invariante, os dois estruturais e os três do caso passam
+6. `verificar-lockstep.mjs` passa em ambos os consumidores
+7. trocar `API_BASE_URL` do stub para o domínio Spring Boot real não exige mudança em
+   nenhum arquivo de `erp-mfe-pedidos` fora de variável de ambiente
 
 ---
 
@@ -310,5 +361,5 @@ como evidência de p99; `11-testes.md` §8 lista o que nenhum teste cobre; `06-s
 duplicação de bundle entre zonas é o que destrava a questão em aberto do ADR-0008.
 
 Ele opera só em `localhost`, só sobre processos que ele mesmo iniciou, e nunca aponta carga
-ou sonda adversária para `mira-backend` ou host remoto sem autorização explícita.
+ou sonda adversária para host remoto sem autorização explícita.
 

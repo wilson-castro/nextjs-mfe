@@ -28,7 +28,19 @@ menos seguro.
 | 7 | Rota da zona vira `app/{zona}/api/bff/` | duas zonas servindo `/api/bff/*` colidem no gateway (limitação 5) |
 | 8 | `/api/stream`, `/api/auth/*` e `/api/otel/*` **nunca** são delegados a uma zona | são do shell; rewrite genérico por prefixo os quebraria (limitação 6) |
 | 9 | Fatia 1 é **somente leitura** | ver seção seguinte |
-| 10 | `erp-ui` fica fora da rodada 1 | nenhum invariante depende dele, e a limitação 3 já prevê duplicação por zona — medir antes de criar repositório |
+| 10 | **O caso de `00-caso.md` é o alvo funcional** — ERP de compras, tela `/pedidos/8821` | o caso já define recursos, atores, projeção esperada e resultados observáveis; a base é construída para atendê-lo, não para um domínio hipotético |
+| 11 | `erp-ui` fica fora da rodada 1 | nenhum invariante depende dele, e a limitação 3 já prevê duplicação por zona — medir antes de criar repositório |
+
+## O que a fatia 1 cobre do caso
+
+Dos nove cenários de `00-caso.md`, a fatia 1 cobre os somente leitura: **C1** (mesma rota,
+payloads diferentes), **C3 parcialmente** (leitura de `_permissoes`) e **C7** (acesso
+revogado → `404` neutro). C2 e C6 dependem de SSE, que é extensão; C4, C5, C8 e C9
+dependem de mutação, que é o elemento 4 do núcleo e fica para a rodada 2.
+
+C1 é o cenário central: os quatro atores do caso — `gabrigas`, `marina`, `rafael` e
+`carla` — dão quatro resultados observáveis distintos na mesma rota, e `rafael` é o que
+prova que **role não é grupo**.
 
 ## A fatia 1 é somente leitura, e isso é núcleo ausente
 

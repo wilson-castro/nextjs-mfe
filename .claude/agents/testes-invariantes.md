@@ -19,7 +19,7 @@ intenção**. Você a torna verificação.
 | # | Invariante | Verificação | Precisa de rede? |
 |---|---|---|---|
 | 1 | credencial nunca no navegador | varre o HTML e todo JS servido em `/pedidos/*` por `access_token`, `refresh_token`, `groups` | sim |
-| 2 | DTO sensível não vira prop de ilha | inspeciona o payload RSC renderizado; lint proíbe DTO em props de `'use client'` | sim |
+| 2 | DTO sensível não vira prop de ilha | como `gabrigas` e como `rafael`, nenhum campo de `CondicaoComercial` no HTML, no flight payload, em prop serializada ou em `data-*`; lint proíbe DTO em props de `'use client'` | sim |
 | 3 | composição no servidor | o stub escuta só em `127.0.0.1` e exige cabeçalho de dev que apenas o adaptador injeta; requisição do navegador recebe `403` | sim |
 | 6 | `server-only` é fronteira de build | importar adaptador de dentro de `'use client'` **deve falhar o build** | não |
 | 7 | allowlist outbound | `//evil.com`, `../`, origin divergente → `DestinoInvalido` | não |
@@ -28,6 +28,21 @@ intenção**. Você a torna verificação.
 
 Testes que usam `@erp/nucleo/testing` rodam sem rede e sem stub. Os demais exigem o stub
 no ar.
+
+## O caso é o alvo
+
+O alvo funcional é o ERP de [`00-caso.md`](docs/design-bff/comum/docs/00-caso.md), tela
+`/pedidos/8821`. Toda verificação de leitura roda contra os quatro atores do caso, porque
+são eles que tornam a projeção falsificável:
+
+| Ator | Espera-se | O que o teste pega se falhar |
+|---|---|---|
+| `gabrigas` (`OPS-NORDESTE`) | sem `CondicaoComercial` | mascaramento no BFF em vez de projeção no domínio |
+| `marina` (+ `COMERCIAL-NORDESTE`) | com `CondicaoComercial` | projeção estrita demais, negando a quem tem direito |
+| `rafael` (`ADMIN`, `OPS-NORDESTE`) | sem `CondicaoComercial` | **role tratada como grupo** — o erro mais provável |
+| `carla` (`OPS-SUL`) | `404` neutro | `403` em vez de `404`, ou `404` distinguível por tempo |
+
+Um teste de projeção que só usa dois atores não pega o erro de `rafael`. Use os quatro.
 
 ## Como trabalhar
 
