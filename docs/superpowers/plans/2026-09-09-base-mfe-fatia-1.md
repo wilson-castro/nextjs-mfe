@@ -445,7 +445,27 @@ cd repos/erp-nucleo && git init -q
 }
 ```
 
-`repos/erp-nucleo/tsconfig.json`: idêntico ao de `erp-contratos`, exceto `"lib": ["ES2023", "DOM"]` acrescentado a `compilerOptions` (para `Response`, `Headers`, `fetch`).
+`repos/erp-nucleo/tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+```
+
+`lib` inclui `DOM` por causa de `Response`, `Headers` e `fetch`.
 
 `repos/erp-nucleo/.npmrc`:
 
@@ -1932,9 +1952,58 @@ mkdir -p "repos/erp-mfe-pedidos/app/pedidos/[id]" repos/erp-mfe-pedidos/lib
 cd repos/erp-mfe-pedidos && git init -q
 ```
 
-`repos/erp-mfe-pedidos/package.json`: igual ao de `erp-shell`, trocando `"name": "erp-mfe-pedidos"` e as portas de `dev`/`start` para `3001`.
+`repos/erp-mfe-pedidos/package.json`:
 
-`.npmrc` e `tsconfig.json`: idênticos aos de `erp-shell`.
+```json
+{
+  "name": "erp-mfe-pedidos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "test": "node --test test/",
+    "lockstep": "node scripts/verificar-lockstep.mjs"
+  },
+  "dependencies": {
+    "@erp/nucleo": "0.1.0",
+    "@erp/contratos": "0.1.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}
+```
+
+`repos/erp-mfe-pedidos/.npmrc`:
+
+```
+@erp:registry=http://localhost:4873
+```
+
+`repos/erp-mfe-pedidos/tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2023", "lib": ["ES2023", "DOM"], "jsx": "preserve",
+    "module": "ESNext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+```
 
 `repos/erp-mfe-pedidos/next.config.ts`:
 
@@ -2018,7 +2087,15 @@ export function AcoesDoPedido({ permissoes }: { permissoes: PermissoesPedido }) 
 
 - [ ] **Step 5: Escrever a página**
 
-`repos/erp-mfe-pedidos/app/layout.tsx`: idêntico ao do shell, com `title: 'Pedidos'`.
+`repos/erp-mfe-pedidos/app/layout.tsx`:
+
+```tsx
+export const metadata = { title: 'Pedidos' }
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <html lang="pt-BR"><body>{children}</body></html>
+}
+```
 
 `repos/erp-mfe-pedidos/app/pedidos/[id]/page.tsx`:
 
@@ -2104,7 +2181,7 @@ Esta é a task que decide se a fatia 1 vale. Todas as anteriores podem estar ver
 - Create: `repos/erp-mfe-pedidos/test/ambiente.mjs`
 - Create: `repos/erp-mfe-pedidos/test/invariantes.test.mjs`
 - Create: `repos/erp-mfe-pedidos/test/caso.test.mjs`
-- Modify: `repos/erp-mfe-pedidos/package.json` — acrescentar `"test": "node --test test/"`
+- Nota: `"test": "node --test test/"` já está no `package.json` criado na Task 9
 
 **Interfaces:**
 - Consumes: shell em `:3000`, zona em `:3001`, stub em `:4000`, todos no ar

@@ -11,5 +11,6 @@ multi-zone-poc
 .worktrees
 .docs
 
-# repositórios da base MFE, cada um com .git próprio
-repos/
+# base MFE: os cinco repositórios entram como submódulos; só o scratch é ignorado
+repos/.verdaccio/storage/
+repos/.verdaccio/verdaccio.pid
