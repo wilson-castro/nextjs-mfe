@@ -65,18 +65,22 @@ A partir da Task 8 também será preciso segurar stub (`:4000`), shell (`:3000`)
 
 ---
 
-## 3. O que não está salvo remotamente
+## 3. Estado remoto — tudo salvo
 
-**Seis commits locais** à frente de `fork/bff-multizone`. Push com `git push fork bff-multizone`.
+| Onde | O quê |
+|---|---|
+| `fork` — `wilson-castro/nextjs-mfe` | branch `bff-multizone` |
+| `origin` — `ArtroxGabriel/nextjs-mfe` | branch `bff-multizone` |
+| `wilson-castro/erp-contratos` (público) | `master` |
+| `wilson-castro/erp-nucleo` (público) | `master` |
 
-E, mais sério:
+`.gitmodules` aponta para as URLs HTTPS reais, e um clone limpo do repositório do Gabriel
+com `--recurse-submodules` foi verificado: os dois submódulos resolvem com arquivos.
 
-> **O código dos sub-repos não existe em nenhum remoto.** `.gitmodules` aponta para
-> caminhos locais (`./repos/erp-contratos`), então quem clonar do GitHub recebe ponteiros
-> que não resolvem. Fechar isso exige criar os repositórios remotos e apontar cada `url`
-> para eles — **ação na conta do GitHub do usuário, aguardando decisão dele.**
-
----
+> **Clonar não basta para rodar.** `@erp/contratos` e `@erp/nucleo` só existem publicados
+> no Verdaccio **local**. Quem clonar precisa subir o próprio registry
+> (`node repos/scripts/registry.mjs up`) e publicar os dois, na ordem contratos → núcleo,
+> ou o `pnpm install` das apps não resolve `@erp/*`.
 
 ## 4. Decisões pendentes do humano
 
