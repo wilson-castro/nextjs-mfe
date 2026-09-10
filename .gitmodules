@@ -1,6 +1,8 @@
 [submodule "repos/erp-contratos"]
 	path = repos/erp-contratos
-	url = ./repos/erp-contratos
+	url = https://github.com/wilson-castro/erp-contratos.git
+	branch = master
 [submodule "repos/erp-nucleo"]
 	path = repos/erp-nucleo
-	url = ./repos/erp-nucleo
+	url = https://github.com/wilson-castro/erp-nucleo.git
+	branch = master
