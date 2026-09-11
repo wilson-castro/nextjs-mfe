@@ -1,58 +1,27 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { GetServerSideProps, NextPage } from 'next';
 import Head from 'next/head';
-import type { ServerPayload } from 'remote/ServerCard';
-import FederatedErrorBoundary from '../components/FederatedErrorBoundary';
-import RemoteFallbackCard from '../components/RemoteFallbackCard';
 import HostLayout from '../components/HostLayout';
-import { fetchRemoteServerData } from '../lib/safeRemoteLoader';
-import { DEFAULT_SESSION, getSessionFromStorage, saveSessionToStorage, type UserSession } from '../lib/session';
+import {
+  DEFAULT_SESSION,
+  getSessionFromStorage,
+  saveSessionToStorage,
+  type UserSession,
+} from '../lib/session';
 import { hostLog } from '../lib/logger';
 
-const RemoteDashboard = lazy(() =>
-  import('remote/RemoteDashboard')
-    .then((mod) => {
-      hostLog.client('FEDERATION_LOAD_REMOTE_SUCCESS', { module: 'remote/RemoteDashboard' });
-      return mod;
-    })
-    .catch((err: Error) => {
-      hostLog.error('FEDERATION_LOAD_REMOTE_ERROR', err);
-      return {
-        default: () => (
-          <RemoteFallbackCard
-            reason={`Module load error: ${err.message || 'Remote bundle unavailable'}`}
-          />
-        ),
-      };
-    })
-);
-
 interface HostHomePageProps {
-  readonly serverData: ServerPayload | null;
-  readonly isRemoteAvailable: boolean;
-  readonly errorReason: string | null;
   readonly hostRenderTimestamp: string;
   readonly initialSession: UserSession;
-  readonly initialTab: string;
-  readonly initialFilter: string | null;
-  readonly initialCity: string | null;
   readonly initialRoute: string;
 }
 
 const HostHomePage: NextPage<HostHomePageProps> = ({
-  serverData,
-  isRemoteAvailable,
-  errorReason,
   hostRenderTimestamp,
   initialSession,
-  initialTab,
-  initialFilter,
-  initialCity,
   initialRoute,
 }) => {
   const [currentSession, setCurrentSession] = useState<UserSession>(initialSession);
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
-  const [currentRoute, setCurrentRoute] = useState<string>(initialRoute);
 
   useEffect(() => {
     const saved = getSessionFromStorage();
@@ -60,16 +29,6 @@ const HostHomePage: NextPage<HostHomePageProps> = ({
       setCurrentSession(saved);
     }
   }, [initialSession]);
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    const nextRoute = `/?tab=${tabId}`;
-    setCurrentRoute(nextRoute);
-    hostLog.client('TAB_ROUTE_CHANGED', { tabId, nextRoute });
-    if (typeof window !== 'undefined') {
-      window.history.pushState(null, '', nextRoute);
-    }
-  };
 
   const handleSessionChange = (nextSession: UserSession) => {
     hostLog.client('HOST_SESSION_UPDATED', {
@@ -80,69 +39,82 @@ const HostHomePage: NextPage<HostHomePageProps> = ({
     saveSessionToStorage(nextSession);
   };
 
-  const filterQuery = initialFilter || undefined;
-  const cityQuery = initialCity || undefined;
-
   return (
     <>
       <Head>
-        <title>Enterprise MFE Host Shell</title>
-        <meta name="description" content="Next.js Resilient Host Micro-Frontend with SSR, MapLibre, and SSE" />
-        <link rel="icon" href="/favicon.ico" />
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+        <title>Enterprise Multi-Zones Shell</title>
+        <meta
+          name="description"
+          content="Next.js Multi-Zones Shell Gateway with HTTP routing, session coordination, and telemetry"
         />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <HostLayout
-        currentTab={activeTab}
-        currentSession={currentSession}
-        onSessionChange={handleSessionChange}
-        isRemoteAvailable={isRemoteAvailable}
-        onTabSelect={handleTabChange}
-      >
+      <HostLayout currentSession={currentSession} onSessionChange={handleSessionChange}>
         <section className="host-section">
           <div className="section-header-flex">
             <div>
-              <h2>Host Shell Runtime Diagnostics</h2>
+              <h2>Shell Runtime Diagnostics</h2>
               <p className="status-text">
                 SSR Rendered at: <strong>{hostRenderTimestamp}</strong>
               </p>
             </div>
             <div className="active-route-pill">
-              Route: <code>{currentRoute}</code>
+              Route: <code>{initialRoute}</code>
             </div>
           </div>
+
+          <dl className="data-grid" style={{ marginTop: '1.25rem' }}>
+            <div className="data-row">
+              <dt>Architecture Pattern</dt>
+              <dd className="data-value highlight">Next.js Multi-Zones Gateway</dd>
+            </div>
+            <div className="data-row">
+              <dt>Shell Gateway Port</dt>
+              <dd className="data-value mono">3000</dd>
+            </div>
+            <div className="data-row">
+              <dt>Zone 2 Rewrite Rule</dt>
+              <dd className="data-value mono">/remote-app &rarr; :3001/remote-app</dd>
+            </div>
+            <div className="data-row">
+              <dt>Zone Static Assets Rule</dt>
+              <dd className="data-value mono">/remote-app-static/:path* &rarr; :3001/remote-app-static/:path*</dd>
+            </div>
+            <div className="data-row">
+              <dt>Active Session</dt>
+              <dd className="data-value">
+                {currentSession.userName} ({currentSession.role})
+              </dd>
+            </div>
+          </dl>
         </section>
 
-        <div className="remote-slot-wrapper">
-          <FederatedErrorBoundary fallbackMessage="Federated component runtime error">
-            {isRemoteAvailable && serverData ? (
-              <Suspense
-                fallback={
-                  <div className="federated-card">
-                    <p className="fallback-text">Hydrating remote micro-frontend module...</p>
-                  </div>
-                }
-              >
-                <RemoteDashboard
-                  activeTab={activeTab as any}
-                  serverData={serverData}
-                  session={currentSession}
-                  queryParams={{
-                    filter: filterQuery as any,
-                    city: cityQuery,
-                  }}
-                />
-              </Suspense>
-            ) : (
-              <RemoteFallbackCard
-                reason={errorReason || 'Remote MFE (Port 3001) is offline or unreachable'}
-              />
-            )}
-          </FederatedErrorBoundary>
-        </div>
+        <section className="host-section">
+          <h2>Connected Zones</h2>
+          <p className="status-text" style={{ marginBottom: '1.25rem' }}>
+            Multi-Zones runs autonomous Next.js applications behind the host shell gateway.
+            Cross-zone navigation triggers full browser document loads to ensure clean runtime isolation.
+          </p>
+
+          <div className="federated-card" style={{ background: '#0f172a', borderColor: '#1e293b' }}>
+            <div className="federated-card-header">
+              <span className="badge">Zone 2</span>
+              <h3 className="card-title">Remote App Zone</h3>
+            </div>
+            <p className="status-text" style={{ marginBottom: '1rem' }}>
+              Autonomous Next.js zone serving under <code>basePath: &apos;/remote-app&apos;</code> with dedicated BFF and static asset prefixes.
+            </p>
+            {/* Architectural invariant: cross-zone link MUST use plain HTML <a>, NEVER Next.js <Link> */}
+            <a
+              href="/remote-app"
+              className="action-btn"
+              style={{ display: 'inline-block', textDecoration: 'none' }}
+            >
+              Open Remote App Zone &rarr;
+            </a>
+          </div>
+        </section>
       </HostLayout>
     </>
   );
@@ -151,57 +123,19 @@ const HostHomePage: NextPage<HostHomePageProps> = ({
 export const getServerSideProps: GetServerSideProps<HostHomePageProps> = async (context) => {
   const hostRenderTimestamp = new Date().toISOString();
   const session = DEFAULT_SESSION;
-  const initialTab = typeof context.query.tab === 'string' ? context.query.tab : 'overview';
-  const initialFilter = typeof context.query.filter === 'string' ? context.query.filter : null;
-  const initialCity = typeof context.query.city === 'string' ? context.query.city : null;
   const initialRoute = context.resolvedUrl || '/';
 
-  hostLog.server('SSR_PAGE_RENDER_START', {
+  // Shell contains zero DAL/business data fetches — only shell runtime metadata
+  hostLog.server('SSR_PAGE_RENDER', {
     route: initialRoute,
-    tab: initialTab,
     user: session.userName,
-  });
-
-  // 1. Fetch remote server data with 800ms upper-bound timeout and session headers
-  const serverData = await fetchRemoteServerData('http://localhost:3001/api/server-data', 800, session);
-
-  const baseProps = {
-    hostRenderTimestamp,
-    initialSession: session,
-    initialTab,
-    initialFilter,
-    initialCity,
-    initialRoute,
-  };
-
-  if (serverData) {
-    hostLog.server('SSR_PAGE_RENDER_SUCCESS', {
-      route: initialRoute,
-      remoteAvailable: true,
-      requestId: serverData.requestId,
-    });
-    return {
-      props: {
-        ...baseProps,
-        serverData,
-        isRemoteAvailable: true,
-        errorReason: null,
-      },
-    };
-  }
-
-  hostLog.server('SSR_PAGE_RENDER_FALLBACK', {
-    route: initialRoute,
-    remoteAvailable: false,
-    reason: 'Remote MFE (Port 3001) is offline or unreachable during SSR',
   });
 
   return {
     props: {
-      ...baseProps,
-      serverData: null,
-      isRemoteAvailable: false,
-      errorReason: 'Remote MFE (Port 3001) is offline or unreachable during SSR',
+      hostRenderTimestamp,
+      initialSession: session,
+      initialRoute,
     },
   };
 };

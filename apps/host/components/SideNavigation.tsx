@@ -4,53 +4,52 @@ import React from 'react';
 import { hostLog } from '../lib/logger';
 
 export interface SideNavigationProps {
-  readonly currentTab: string;
+  readonly currentTab?: string;
   readonly onTabSelect?: (tabId: string) => void;
 }
 
-const NAV_ITEMS = [
-  { id: 'overview', label: 'Overview & SSR', icon: '📊', description: 'Federated SSR server card' },
-  { id: 'telemetry', label: 'Live Telemetry (SSE)', icon: '⚡', description: 'Real-time Server-Sent Events' },
-  { id: 'map', label: 'Fleet Map (MapLibre)', icon: '🗺️', description: 'Interactive MapLibre GL MFE' },
-  { id: 'metrics', label: 'Server Cache & State', icon: '⚙️', description: 'Diagnostics & Cross-MFE state' },
-] as const;
+export const SideNavigation: React.FC<SideNavigationProps> = () => {
+  const handleNavClick = (label: string, destination: string) => {
+    hostLog.client('NAVIGATE_ZONE_CLICK', { label, destination });
+  };
 
-export const SideNavigation: React.FC<SideNavigationProps> = ({ currentTab, onTabSelect }) => {
   return (
     <nav className="side-navigation" aria-label="Main Navigation">
-      <div className="nav-section-title">Micro-Frontend Views</div>
+      <div className="nav-section-title">Zones & Navigation</div>
       <ul className="nav-list">
-        {NAV_ITEMS.map((item) => {
-          const isActive = currentTab === item.id;
-          return (
-            <li key={item.id} className="nav-item">
-              <a
-                href={`/?tab=${item.id}`}
-                className={`nav-link ${isActive ? 'nav-link-active' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  hostLog.client('NAVIGATE_TAB_CLICK', {
-                    tabId: item.id,
-                    label: item.label,
-                  });
-                  onTabSelect?.(item.id);
-                }}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <div className="nav-text-block">
-                  <span className="nav-title">{item.label}</span>
-                  <span className="nav-description">{item.description}</span>
-                </div>
-              </a>
-            </li>
-          );
-        })}
+        <li className="nav-item">
+          <a
+            href="/"
+            className="nav-link"
+            onClick={() => handleNavClick('Shell Home', '/')}
+          >
+            <span className="nav-icon">🏠</span>
+            <div className="nav-text-block">
+              <span className="nav-title">Shell Home</span>
+              <span className="nav-description">Gateway diagnostics</span>
+            </div>
+          </a>
+        </li>
+        <li className="nav-item">
+          {/* Architectural invariant: cross-zone navigation MUST use plain <a>, NEVER Next.js <Link> */}
+          <a
+            href="/remote-app"
+            className="nav-link"
+            onClick={() => handleNavClick('Remote App Zone', '/remote-app')}
+          >
+            <span className="nav-icon">📦</span>
+            <div className="nav-text-block">
+              <span className="nav-title">Remote App</span>
+              <span className="nav-description">Port 3001 autonomous zone</span>
+            </div>
+          </a>
+        </li>
       </ul>
 
       <div className="nav-footer">
         <div className="nav-badge-box">
-          <small className="nav-badge-title">Module Federation v8</small>
-          <p className="nav-badge-desc">Next.js SSR + Client Islands</p>
+          <small className="nav-badge-title">Next.js Multi-Zones</small>
+          <p className="nav-badge-desc">Native HTTP Zone Routing</p>
         </div>
       </div>
     </nav>

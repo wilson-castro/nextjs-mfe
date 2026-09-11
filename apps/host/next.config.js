@@ -1,33 +1,29 @@
-const { NextFederationPlugin } = require('@module-federation/nextjs-mf');
-
-/**
- * Resolve remote entry location dynamically based on runtime context.
- * Server SSR needs Node.js bundle (_next/static/ssr/remoteEntry.js),
- * Client hydration needs browser bundle (_next/static/chunks/remoteEntry.js).
- */
-const getRemotes = (isServer) => {
-  const location = isServer ? 'ssr' : 'chunks';
-  return {
-    remote: `remote@http://localhost:3001/_next/static/${location}/remoteEntry.js`,
-  };
-};
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  webpack(config, options) {
-    const { isServer } = options;
+  async rewrites() {
+    const remoteZoneUrl =
+      process.env.REMOTE_ZONE_URL ||
+      process.env.REMOTE_APP_URL ||
+      'http://localhost:3001';
 
-    config.plugins.push(
-      new NextFederationPlugin({
-        name: 'host',
-        filename: 'static/chunks/remoteEntry.js',
-        remotes: getRemotes(isServer),
-        shared: {},
-      })
-    );
-
-    return config;
+    return [
+      // 1. Zone root: explicit match for /remote-app
+      {
+        source: '/remote-app',
+        destination: `${remoteZoneUrl}/remote-app`,
+      },
+      // 2. Zone sub-routes: matches all paths and endpoints under /remote-app/
+      {
+        source: '/remote-app/:path*',
+        destination: `${remoteZoneUrl}/remote-app/:path*`,
+      },
+      // 3. Zone static assets: matches static chunks and assets under /remote-app-static/
+      {
+        source: '/remote-app-static/:path*',
+        destination: `${remoteZoneUrl}/remote-app-static/:path*`,
+      },
+    ];
   },
 };
 

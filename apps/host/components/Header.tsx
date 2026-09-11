@@ -8,7 +8,7 @@ import { hostLog } from '../lib/logger';
 interface HeaderProps {
   readonly currentSession: UserSession;
   readonly onSessionChange: (session: UserSession) => void;
-  readonly isRemoteAvailable: boolean;
+  readonly isRemoteAvailable?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,20 +33,32 @@ export const Header: React.FC<HeaderProps> = ({
     );
   };
 
+  const handleToastPing = () => {
+    emitToast(
+      'Host Notification',
+      'Event triggered from Host Shell Header',
+      'info'
+    );
+  };
+
   return (
     <header className="app-header">
       <div className="header-brand">
         <div className="brand-logo">MFE</div>
         <div>
           <h1 className="brand-title">Enterprise MFE Host</h1>
-          <span className="brand-subtitle">Next.js 15 App Shell (Port 3000)</span>
+          <span className="brand-subtitle">Next.js Multi-Zones Shell (Port 3000)</span>
         </div>
       </div>
 
       <div className="header-actions">
         <div className="system-pill">
-          <span className={`status-dot ${isRemoteAvailable ? 'dot-online' : 'dot-offline'}`} />
-          <span>Remote MFE (3001): {isRemoteAvailable ? 'Online' : 'Degraded'}</span>
+          <span className={`status-dot ${isRemoteAvailable === false ? 'dot-offline' : 'dot-online'}`} />
+          <span>
+            {isRemoteAvailable !== undefined
+              ? `Remote App (3001): ${isRemoteAvailable ? 'Online' : 'Degraded'}`
+              : 'Multi-Zones Gateway (Port 3000)'}
+          </span>
         </div>
 
         <div className="session-selector">
@@ -68,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           className="header-toast-btn"
-          onClick={() => emitToast('Host Notification', 'Event triggered from Host Shell Header', 'info')}
+          onClick={handleToastPing}
         >
           🔔 Ping Toast
         </button>

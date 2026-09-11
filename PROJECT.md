@@ -1,0 +1,1 @@
+/home/gabrigas/Selene/Adventure/nextjs-mfe/.agents/orchestrator/PROJECT.md
