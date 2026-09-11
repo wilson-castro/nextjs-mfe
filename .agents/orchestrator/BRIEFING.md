@@ -73,18 +73,31 @@ Orchestrate the refactor of nextjs-mfe PoC from Module Federation to native Next
 | explorer_m2_2 | teamwork_preview_explorer | M2 UI & Navigation Refactoring Planning | completed | 4f511812-869b-4542-be80-966a0599f884 |
 | explorer_m2_3 | teamwork_preview_explorer | M2 Test & Verification Planning | completed | e49b235d-7d44-4f30-98d3-553039708150 |
 | worker_m2 | teamwork_preview_worker | M2 Host Shell Implementation | completed | 1be66bfa-3c55-4a22-912e-264f22644f03 |
-| reviewer_m2_1 | teamwork_preview_reviewer | M2 Host Shell Review & Test Validation | in-progress | 49dba2d0-e0b1-4b14-a407-eb7d47466664 |
-| reviewer_m2_2 | teamwork_preview_reviewer | M2 Host Shell Adversarial Review | in-progress | 29102aa7-8411-44ed-b838-c52221e89aac |
-| challenger_m2_1 | teamwork_preview_challenger | M2 Static Invariants & Rewrites Validation | in-progress | 4e8758e4-ff8d-408d-a3e1-9ede98c7706e |
-| challenger_m2_2 | teamwork_preview_challenger | M2 Live Cross-Zone Proxy Verification | in-progress | f10e4412-5de2-47f1-8c07-253d937af86d |
-| auditor_m2_1 | teamwork_preview_auditor | M2 Forensic Integrity Audit | in-progress | 15c0e4a9-ae2b-47f9-8507-d3f2aeb13cf5 |
+| reviewer_m2_1 | teamwork_preview_reviewer | M2 Host Shell Review & Test Validation | abandoned (gen 1 ended mid-run, no handoff) | 49dba2d0-e0b1-4b14-a407-eb7d47466664 |
+| reviewer_m2_2 | teamwork_preview_reviewer | M2 Host Shell Adversarial Review | abandoned (gen 1 ended mid-run, no handoff) | 29102aa7-8411-44ed-b838-c52221e89aac |
+| challenger_m2_1 | teamwork_preview_challenger | M2 Static Invariants & Rewrites Validation | abandoned (gen 1 ended mid-run, no handoff) | 4e8758e4-ff8d-408d-a3e1-9ede98c7706e |
+| challenger_m2_2 | teamwork_preview_challenger | M2 Live Cross-Zone Proxy Verification | abandoned (gen 1 ended mid-run, no handoff) | f10e4412-5de2-47f1-8c07-253d937af86d |
+| auditor_m2_1 | teamwork_preview_auditor | M2 Forensic Integrity Audit | abandoned (gen 1 ended mid-run, no handoff) | 15c0e4a9-ae2b-47f9-8507-d3f2aeb13cf5 |
+| reviewer_m2_3 | revisor-mfe | M2 Review, Test Validation & POC.md regressions | completed — APPROVE | gen 2 |
+| challenger_m2_3 | simulador-condicoes | M2 Build, Live Cross-Zone Proxy, SSE & Degraded Zone | in-progress | gen 2 |
+| auditor_m2_2 | general-purpose | M2 Forensic Integrity Audit (mutation falsification) | in-progress | gen 2 |
 
 ## Succession Status
-- Succession status: Operating (orchestrator continue)
-- Cumulative spawn count: 26
-- Pending subagents: 49dba2d0-e0b1-4b14-a407-eb7d47466664, 29102aa7-8411-44ed-b838-c52221e89aac, 4e8758e4-ff8d-408d-a3e1-9ede98c7706e, f10e4412-5de2-47f1-8c07-253d937af86d, 15c0e4a9-ae2b-47f9-8507-d3f2aeb13cf5
-- Predecessor: none
+- Succession status: Generation 2 operating (resumed 2026-09-11 on Wilson Castro's machine, from Gabriel's WIP commit 355111e)
+- Generation 1: 26 spawns; ended mid-M2-gate with 5 verifiers pending and no handoffs
+- Generation 2 spawn count: 3 / 16
+- Pending subagents: challenger_m2_3, auditor_m2_2
+- Predecessor: Generation 1 (012e9e76-2bff-4cfd-a734-2b498b65bab2)
 - Successor: none
+
+## Generation 2 — Environment & Decisions
+- Role mapping onto the project's agent definitions (`.claude/agents/`): reviewer → `revisor-mfe`, challenger → `simulador-condicoes`; auditor and worker use the general-purpose agent. Agents without a write tool return their report and the orchestrator saves it as their `handoff.md`.
+- Repo root is `/home/wilson-castro/Documents/projects/mira/nextjs-mfe`; gen-1 files cite `/home/gabrigas/Selene/Adventure/nextjs-mfe`.
+- `rtk` is not installed here. Commands run plain. Node v24.7.0, pnpm 11.22.0.
+- HUMAN DECISION: `tsx` is not in any package.json or the lockfile. Fetching it via `npx` was declined. Tests run with Node native type stripping: `node --test test/*.test.ts`. If the test scripts in `apps/*/package.json` (still `npx tsx`) need to change, that belongs to M3.
+- HUMAN APPROVED: `pnpm install --frozen-lockfile` ran (Packages: -53, lockfile unchanged, tree clean). Orphaned `@module-federation/*` dirs remain in `node_modules/.pnpm`, unlinked from any app; M3 cleanup.
+- HUMAN APPROVED: removed leftover `apps/remote/` (112 MB of ignored `.next` + `node_modules`, 0 tracked files).
+- M2 gate re-run as a triad (per handoff Step 2C) rather than 5 verifiers. Only the challenger builds and binds ports 3000/3001; the auditor's falsification runs in a scratch copy so it never touches the shared tree.
 
 ## Active Timers
 - Heartbeat cron: 012e9e76-2bff-4cfd-a734-2b498b65bab2/task-302

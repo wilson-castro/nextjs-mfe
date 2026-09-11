@@ -32,6 +32,12 @@ Last visited: 2026-09-11T14:10:15Z
 - 2026-09-11T14:01:53Z: Dispatched worker_m2 to implement Milestone 2.
 - 2026-09-11T14:12:45Z: worker_m2 completed (5 files deleted, package.json updated, next.config.js 3 rewrites, layout decoupled, pages/index.tsx rewritten, rewrites.test.ts 6/6 pass, tsc clean, build clean, offline smoke test 7/7 pass).
 - 2026-09-11T14:13:04Z: Dispatched reviewer_m2_1, reviewer_m2_2, challenger_m2_1, challenger_m2_2, auditor_m2_1 for Milestone 2 Gate verification.
+- 2026-09-11 (gen 1 end): Generation 1 stopped; WIP committed as 355111e ("WIP: boa sorte wilson"). All 5 M2 verifiers left without handoffs.
+
+## Generation 2 (Wilson Castro's machine)
+- 2026-09-11: Fast-forwarded bff-multizone to origin/bff-multizone (355111e). Read orchestrator state, worker_m2 handoff, and plan Task 6.
+- 2026-09-11: Environment reconciled with human approval: `pnpm install --frozen-lockfile` (-53 packages, lockfile untouched); removed leftover ignored `apps/remote/`; `tsx` replaced by native `node --test` (no fetch). Deps resolve for both apps.
+- 2026-09-11: M2 gate restarted with fresh triad: reviewer_m2_3 (revisor-mfe), challenger_m2_3 (simulador-condicoes, owns build + ports), auditor_m2_2 (general-purpose, falsification in scratch copy).
 
 
 

@@ -26,10 +26,20 @@ Gate Result: **PASS** (Milestone 1 Complete)
 | Agent | Role | Verdict | Source | Notes |
 |-------|------|---------|--------|-------|
 | worker_m2 | teamwork_preview_worker | DONE (build & tests passed) | handoff.md | 6 rewrites tests pass, tsc clean, build clean, offline smoke 7/7 pass |
-| reviewer_m2_1 | teamwork_preview_reviewer | PENDING | - | In-progress |
-| reviewer_m2_2 | teamwork_preview_reviewer | PENDING | - | In-progress |
-| challenger_m2_1 | teamwork_preview_challenger | PENDING | - | In-progress |
-| challenger_m2_2 | teamwork_preview_challenger | PENDING | - | In-progress |
-| auditor_m2_1 | teamwork_preview_auditor | PENDING | - | In-progress |
+| reviewer_m2_1 | teamwork_preview_reviewer | ABANDONED | - | Gen 1 ended mid-run, no handoff |
+| reviewer_m2_2 | teamwork_preview_reviewer | ABANDONED | - | Gen 1 ended mid-run, no handoff |
+| challenger_m2_1 | teamwork_preview_challenger | ABANDONED | - | Gen 1 ended mid-run, no handoff |
+| challenger_m2_2 | teamwork_preview_challenger | ABANDONED | - | Gen 1 ended mid-run, no handoff |
+| auditor_m2_1 | teamwork_preview_auditor | ABANDONED | - | Gen 1 ended mid-run, no handoff |
+
+Gate Result: **NO VERDICT** (superseded by Iteration 2)
+
+## Gate — Milestone 2 (Iteration 2 — Generation 2 triad)
+| Agent | Role | Verdict | Source | Notes |
+|-------|------|---------|--------|-------|
+| worker_m2 | teamwork_preview_worker | DONE (claimed) | worker_m2/handoff.md | Under audit; gen-1 run used `rtk` + `tsx`, neither present here |
+| reviewer_m2_3 | revisor-mfe | APPROVE | reviewer_m2_3/handoff.md | 6/6 tests (native node --test), tsc clean, 3 rewrites + env precedence verified non-vacuous, `<a>`-only, zero DAL. Important: `npx tsx` test script not hermetic (→ M3). Minor: dead props in SideNavigation/Header. POC.md regressions logged (host chrome absent in zone; session inheritance broken) |
+| challenger_m2_3 | simulador-condicoes | PENDING | - | In-progress; owns build + ports 3000/3001 |
+| auditor_m2_2 | general-purpose (forensic) | PENDING | - | In-progress; binary veto |
 
 Gate Result: **PENDING**
