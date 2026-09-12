@@ -79,14 +79,19 @@ Orchestrate the refactor of nextjs-mfe PoC from Module Federation to native Next
 | challenger_m2_2 | teamwork_preview_challenger | M2 Live Cross-Zone Proxy Verification | abandoned (gen 1 ended mid-run, no handoff) | f10e4412-5de2-47f1-8c07-253d937af86d |
 | auditor_m2_1 | teamwork_preview_auditor | M2 Forensic Integrity Audit | abandoned (gen 1 ended mid-run, no handoff) | 15c0e4a9-ae2b-47f9-8507-d3f2aeb13cf5 |
 | reviewer_m2_3 | revisor-mfe | M2 Review, Test Validation & POC.md regressions | completed — APPROVE | gen 2 |
-| challenger_m2_3 | simulador-condicoes | M2 Build, Live Cross-Zone Proxy, SSE & Degraded Zone | in-progress | gen 2 |
-| auditor_m2_2 | general-purpose | M2 Forensic Integrity Audit (mutation falsification) | in-progress | gen 2 |
+| challenger_m2_3 | simulador-condicoes | M2 Build, Live Cross-Zone Proxy, SSE & Degraded Zone | completed — REQUEST_CHANGES | gen 2 |
+| auditor_m2_2 | general-purpose | M2 Forensic Integrity Audit (mutation falsification) | completed — CLEAN | gen 2 |
+| worker_m2_fix | general-purpose | M2 Remediation — F1 zone-outage error page | completed — DONE | gen 2 |
+| reviewer_m2_4 | revisor-mfe | M2 Remediation Review | completed — APPROVE | gen 2 |
+| challenger_m2_4 | simulador-condicoes | M2 Remediation Live Verification | completed — APPROVE | gen 2 |
+| auditor_m2_3 | general-purpose | M2 Remediation Forensic Audit | completed — INTEGRITY VIOLATION | gen 2 |
+| worker_m2_fix2 | general-purpose | M2 Remediation 2 — behavioral tests, TTL 1s, doc §5.1 | in-progress | gen 2 |
 
 ## Succession Status
 - Succession status: Generation 2 operating (resumed 2026-09-11 on Wilson Castro's machine, from Gabriel's WIP commit 355111e)
 - Generation 1: 26 spawns; ended mid-M2-gate with 5 verifiers pending and no handoffs
-- Generation 2 spawn count: 3 / 16
-- Pending subagents: challenger_m2_3, auditor_m2_2
+- Generation 2 spawn count: 8 / 16
+- Pending subagents: worker_m2_fix2
 - Predecessor: Generation 1 (012e9e76-2bff-4cfd-a734-2b498b65bab2)
 - Successor: none
 
@@ -97,6 +102,7 @@ Orchestrate the refactor of nextjs-mfe PoC from Module Federation to native Next
 - HUMAN DECISION: `tsx` is not in any package.json or the lockfile. Fetching it via `npx` was declined. Tests run with Node native type stripping: `node --test test/*.test.ts`. If the test scripts in `apps/*/package.json` (still `npx tsx`) need to change, that belongs to M3.
 - HUMAN APPROVED: `pnpm install --frozen-lockfile` ran (Packages: -53, lockfile unchanged, tree clean). Orphaned `@module-federation/*` dirs remain in `node_modules/.pnpm`, unlinked from any app; M3 cleanup.
 - HUMAN APPROVED: removed leftover `apps/remote/` (112 MB of ignored `.next` + `node_modules`, 0 tracked files).
+- HUMAN DECISIONS 2026-09-12: liveness TTL cut from 3s to 1s to narrow the measured bare-500 window; the orchestrator may edit `01-operacao.md` §5.1 to record the bounded exception with its measured numbers.
 - M2 gate re-run as a triad (per handoff Step 2C) rather than 5 verifiers. Only the challenger builds and binds ports 3000/3001; the auditor's falsification runs in a scratch copy so it never touches the shared tree.
 
 ## Active Timers
