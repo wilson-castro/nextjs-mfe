@@ -85,13 +85,13 @@ Orchestrate the refactor of nextjs-mfe PoC from Module Federation to native Next
 | reviewer_m2_4 | revisor-mfe | M2 Remediation Review | completed — APPROVE | gen 2 |
 | challenger_m2_4 | simulador-condicoes | M2 Remediation Live Verification | completed — APPROVE | gen 2 |
 | auditor_m2_3 | general-purpose | M2 Remediation Forensic Audit | completed — INTEGRITY VIOLATION | gen 2 |
-| worker_m2_fix2 | general-purpose | M2 Remediation 2 — behavioral tests, TTL 1s, doc §5.1 | in-progress | gen 2 |
+| worker_m2_fix2 | general-purpose | M2 Remediation 2 — behavioral tests, TTL 1s, doc §5.1 | stopped by the human before writing any file | gen 2 |
 
 ## Succession Status
 - Succession status: Generation 2 operating (resumed 2026-09-11 on Wilson Castro's machine, from Gabriel's WIP commit 355111e)
 - Generation 1: 26 spawns; ended mid-M2-gate with 5 verifiers pending and no handoffs
 - Generation 2 spawn count: 8 / 16
-- Pending subagents: worker_m2_fix2
+- Pending subagents: none — execution paused, see RETOMADA.md
 - Predecessor: Generation 1 (012e9e76-2bff-4cfd-a734-2b498b65bab2)
 - Successor: none
 
