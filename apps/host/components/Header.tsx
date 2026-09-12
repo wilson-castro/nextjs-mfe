@@ -8,13 +8,11 @@ import { hostLog } from '../lib/logger';
 interface HeaderProps {
   readonly currentSession: UserSession;
   readonly onSessionChange: (session: UserSession) => void;
-  readonly isRemoteAvailable?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentSession,
   onSessionChange,
-  isRemoteAvailable,
 }) => {
   const handleUserSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = PRESET_USERS.find((u) => u.userId === e.target.value);
@@ -53,12 +51,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="header-actions">
         <div className="system-pill">
-          <span className={`status-dot ${isRemoteAvailable === false ? 'dot-offline' : 'dot-online'}`} />
-          <span>
-            {isRemoteAvailable !== undefined
-              ? `Remote App (3001): ${isRemoteAvailable ? 'Online' : 'Degraded'}`
-              : 'Multi-Zones Gateway (Port 3000)'}
-          </span>
+          <span className="status-dot dot-online" />
+          <span>Multi-Zones Gateway (Port 3000)</span>
         </div>
 
         <div className="session-selector">

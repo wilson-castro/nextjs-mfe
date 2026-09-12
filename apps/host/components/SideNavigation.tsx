@@ -3,10 +3,7 @@
 import React from 'react';
 import { hostLog } from '../lib/logger';
 
-export interface SideNavigationProps {
-  readonly currentTab?: string;
-  readonly onTabSelect?: (tabId: string) => void;
-}
+export interface SideNavigationProps {}
 
 export const SideNavigation: React.FC<SideNavigationProps> = () => {
   const handleNavClick = (label: string, destination: string) => {
